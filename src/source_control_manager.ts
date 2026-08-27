@@ -2,6 +2,8 @@ import { Stats } from "original-fs";
 import * as path from "path";
 import {
   commands,
+  ConfigurationChangeEvent,
+  ConfigurationTarget,
   Disposable,
   Event,
   EventEmitter,
@@ -18,7 +20,7 @@ import {
   RepositoryState
 } from "./common/types";
 import { debounce } from "./decorators";
-import { readdir, stat } from "./fs";
+import { exists, readdir, stat } from "./fs";
 import { configuration } from "./helpers/configuration";
 import { RemoteRepository } from "./remoteRepository";
 import { Repository } from "./repository";
@@ -28,10 +30,12 @@ import {
   anyEvent,
   dispose,
   filterEvent,
+  getSvnDir,
   IDisposable,
   isDescendant,
   isSvnFolder,
   normalizePath,
+  setVscodeContext,
   eventToPromise
 } from "./util";
 import { matchAll } from "./util/globMatch";
@@ -55,12 +59,21 @@ export class SourceControlManager implements IDisposable {
   public readonly onDidChangeStatusRepository: Event<Repository> = this
     ._onDidChangeStatusRepository.event;
 
+  private _onDidChangeCandidates = new EventEmitter<string[]>();
+  public readonly onDidChangeCandidates: Event<string[]> = this
+    ._onDidChangeCandidates.event;
+
   public openRepositories: IOpenRepository[] = [];
   private disposables: Disposable[] = [];
   private enabled = false;
   private possibleSvnRepositoryPaths = new Set<string>();
   private ignoreList: string[] = [];
   private maxDepth: number = 0;
+  private candidateRepositories: string[] = [];
+
+  public get candidateRepositoryPaths(): string[] {
+    return [...this.candidateRepositories];
+  }
 
   private configurationChangeDisposable: Disposable;
 
@@ -126,10 +139,36 @@ export class SourceControlManager implements IDisposable {
     );
   }
 
-  private onDidChangeConfiguration(): void {
+  private onDidChangeConfiguration(event: ConfigurationChangeEvent): void {
     const enabled = configuration.get<boolean>("enabled") === true;
+    const multipleFolders = configuration.get<boolean>(
+      "multipleFolders.enabled",
+      false
+    );
+    const autoScan = configuration.get<boolean>(
+      "subRepositories.autoScan.enabled",
+      true
+    );
 
-    this.maxDepth = configuration.get<number>("multipleFolders.depth", 0);
+    if (multipleFolders || autoScan) {
+      this.maxDepth = configuration.get<number>("multipleFolders.depth", 0);
+
+      this.ignoreList = configuration.get("multipleFolders.ignore", []);
+    } else {
+      this.maxDepth = 0;
+      this.ignoreList = [];
+    }
+
+    if (
+      event.affectsConfiguration("svn.multipleFolders.enabled") &&
+      multipleFolders
+    ) {
+      this.scanWorkspaceFolders();
+    }
+
+    if (event.affectsConfiguration("svn.subRepositories.autoScan.enabled")) {
+      this.scanCandidateRepositories();
+    }
 
     if (enabled === this.enabled) {
       return;
@@ -149,8 +188,12 @@ export class SourceControlManager implements IDisposable {
       "multipleFolders.enabled",
       false
     );
+    const autoScan = configuration.get<boolean>(
+      "subRepositories.autoScan.enabled",
+      true
+    );
 
-    if (multipleFolders) {
+    if (multipleFolders || autoScan) {
       this.maxDepth = configuration.get<number>("multipleFolders.depth", 0);
 
       this.ignoreList = configuration.get("multipleFolders.ignore", []);
@@ -183,6 +226,11 @@ export class SourceControlManager implements IDisposable {
     this.setState("initialized");
 
     await this.scanWorkspaceFolders();
+
+    if (multipleFolders || autoScan) {
+      await this.scanCandidateRepositories();
+      await this.promptForSubRepositories();
+    }
   }
 
   private onPossibleSvnRepositoryChange(uri: Uri): void {
@@ -234,6 +282,8 @@ export class SourceControlManager implements IDisposable {
     this.openRepositories = [];
 
     this.possibleSvnRepositoryPaths.clear();
+    this.candidateRepositories = [];
+    this.setCandidateContext();
     this.disposables = dispose(this.disposables);
   }
 
@@ -259,13 +309,149 @@ export class SourceControlManager implements IDisposable {
       this.tryOpenRepository(p.uri.fsPath)
     );
     openRepositoriesToDispose.forEach(r => r.repository.dispose());
+
+    await this.scanCandidateRepositories();
   }
 
-  private async scanWorkspaceFolders() {
+  public async scanWorkspaceFolders() {
     for (const folder of workspace.workspaceFolders || []) {
       const root = folder.uri.fsPath;
       await this.tryOpenRepository(root);
     }
+  }
+
+  private setCandidateContext(): void {
+    setVscodeContext(
+      "svnCandidateRepositoriesFound",
+      this.candidateRepositories.length > 0
+    );
+  }
+
+  public async scanCandidateRepositories(): Promise<string[]> {
+    const candidates = new Set<string>();
+    const svnDir = getSvnDir();
+
+    for (const folder of workspace.workspaceFolders || []) {
+      const root = folder.uri.fsPath;
+
+      if (this.getRepository(root)) {
+        continue;
+      }
+
+      let files: string[] | Buffer[] = [];
+
+      try {
+        files = await readdir(root);
+      } catch (error) {
+        continue;
+      }
+
+      for (const file of files) {
+        const dir = path.join(root, file);
+        let stats: Stats;
+
+        try {
+          stats = await stat(dir);
+        } catch (error) {
+          continue;
+        }
+
+        if (
+          stats.isDirectory() &&
+          !matchAll(dir, this.ignoreList, { dot: true }) &&
+          (await exists(`${dir}/${svnDir}`))
+        ) {
+          candidates.add(dir);
+        }
+      }
+    }
+
+    this.candidateRepositories = [...candidates];
+    this.setCandidateContext();
+    this._onDidChangeCandidates.fire(this.candidateRepositories);
+
+    return this.candidateRepositories;
+  }
+
+  public async promptForSubRepositories(): Promise<void> {
+    if (this.openRepositories.length > 0) {
+      return;
+    }
+
+    if (configuration.get<boolean>("multipleFolders.enabled", false)) {
+      return;
+    }
+
+    if (
+      configuration.get<boolean>("subRepositories.detectedDismissed", false)
+    ) {
+      return;
+    }
+
+    const candidates = this.candidateRepositories.filter(
+      c => !this.getRepository(c)
+    );
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    const enable = "Enable sub-repositories detection";
+    const showList = "Show detected repositories";
+    const never = "Don't Show Again";
+
+    const choice = await window.showInformationMessage(
+      `Detected ${candidates.length} SVN ${
+        candidates.length === 1 ? "repository" : "repositories"
+      } inside sub-folders of the workspace.`,
+      enable,
+      showList,
+      never
+    );
+
+    if (choice === enable) {
+      await configuration.update(
+        "multipleFolders.enabled",
+        true,
+        ConfigurationTarget.Workspace
+      );
+      await this.scanWorkspaceFolders();
+    } else if (choice === showList) {
+      const repoPath = await this.pickCandidateRepository();
+      if (repoPath) {
+        await this.tryOpenRepository(repoPath, 0);
+      }
+    } else if (choice === never) {
+      await configuration.update(
+        "subRepositories.detectedDismissed",
+        true,
+        ConfigurationTarget.Workspace
+      );
+    }
+  }
+
+  public async pickCandidateRepository(): Promise<string | undefined> {
+    const candidates = this.candidateRepositories.filter(
+      c => !this.getRepository(c)
+    );
+
+    if (candidates.length === 0) {
+      throw new Error("There are no available candidate repositories");
+    }
+
+    const picks = candidates.map(candidate => {
+      return {
+        label: path.basename(candidate),
+        detail: candidate,
+        path: candidate
+      };
+    });
+
+    const pick = await window.showQuickPick(picks, {
+      placeHolder: "Choose a repository to open"
+    });
+
+    return pick && pick.path;
   }
 
   public async tryOpenRepository(path: string, level = 0): Promise<void> {
@@ -476,11 +662,13 @@ export class SourceControlManager implements IDisposable {
         e => e !== openRepository
       );
       this._onDidCloseRepository.fire(repository);
+      this._onDidChangeCandidates.fire(this.candidateRepositories);
     };
 
     const openRepository = { repository, dispose };
     this.openRepositories.push(openRepository);
     this._onDidOpenRepository.fire(repository);
+    this._onDidChangeCandidates.fire(this.candidateRepositories);
   }
 
   public close(repository: Repository): void {

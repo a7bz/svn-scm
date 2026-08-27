@@ -9,6 +9,7 @@ import {
 } from "vscode";
 import { SourceControlManager } from "../../source_control_manager";
 import BaseNode from "../nodes/baseNode";
+import CandidateRepositoriesNode from "../nodes/candidateRepositoriesNode";
 import RepositoryNode from "../nodes/repositoryNode";
 import { dispose } from "../../util";
 
@@ -26,7 +27,8 @@ export default class SvnProvider
       window.registerTreeDataProvider("svn", this),
       commands.registerCommand("svn.treeview.refreshProvider", () =>
         this.refresh()
-      )
+      ),
+      sourceControlManager.onDidChangeCandidates(() => this.refresh())
     );
   }
 
@@ -39,10 +41,7 @@ export default class SvnProvider
   }
 
   public async getChildren(element?: BaseNode): Promise<BaseNode[]> {
-    if (
-      !this.sourceControlManager ||
-      this.sourceControlManager.openRepositories.length === 0
-    ) {
+    if (!this.sourceControlManager) {
       return Promise.resolve([]);
     }
 
@@ -50,13 +49,21 @@ export default class SvnProvider
       return element.getChildren();
     }
 
-    const repositories = this.sourceControlManager.openRepositories.map(
+    const nodes: BaseNode[] = this.sourceControlManager.openRepositories.map(
       repository => {
         return new RepositoryNode(repository.repository, this);
       }
     );
 
-    return repositories;
+    const candidates = this.sourceControlManager.candidateRepositoryPaths.filter(
+      c => !this.sourceControlManager.getRepository(c)
+    );
+
+    if (candidates.length > 0) {
+      nodes.push(new CandidateRepositoriesNode(this.sourceControlManager));
+    }
+
+    return nodes;
   }
 
   public update(node: BaseNode): void {

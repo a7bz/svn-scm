@@ -9,6 +9,7 @@ import { Close } from "./commands/close";
 import { Commit } from "./commands/commit";
 import { CommitWithMessage } from "./commands/commitWithMessage";
 import { DeleteUnversioned } from "./commands/deleteUnversioned";
+import { EnableSubRepositories } from "./commands/enableSubRepositories";
 import { FileOpen } from "./commands/fileOpen";
 import { FinishCheckout } from "./commands/finishCheckout";
 import { GetSourceControlManager } from "./commands/get_source_control_manager";
@@ -46,6 +47,7 @@ import { SourceControlManager } from "./source_control_manager";
 import { SearchLogByRevision } from "./commands/search_log_by_revision";
 import { SearchLogByText } from "./commands/search_log_by_text";
 import { Merge } from "./commands/merge";
+import { OpenCandidateRepository } from "./commands/openCandidateRepository";
 
 export function registerCommands(
   sourceControlManager: SourceControlManager,
@@ -90,6 +92,8 @@ export function registerCommands(
   disposables.push(new Checkout());
   disposables.push(new RefreshRemoteChanges());
   disposables.push(new DeleteUnversioned());
+  disposables.push(new EnableSubRepositories());
+  disposables.push(new OpenCandidateRepository());
   disposables.push(new OpenChangeHead());
   disposables.push(new OpenHeadFile());
   disposables.push(new RevertAll());
