@@ -12,6 +12,7 @@ out/test/**
 out/tools/**
 package-lock.json
 package.json.bak
+pnpm-lock.yaml
 scss/**
 src/**
 svn-scm.vsix
@@ -23,7 +24,7 @@ vsc-extension-quickstart.md
 .dependabot/**
 images/docs/**
 bin
-webpack.config.js
+vite.config.ts
 
 out/**
 !out/extension.js*
