@@ -55,7 +55,7 @@
         "watch:css": "sass scss/:css/ --watch --silence-deprecation=import --silence-deprecation=global-builtin"
     },
     "dependencies": {
-        "iconv-lite-umd": "^0.6.10",
+        "@vscode/iconv-lite-umd": "^0.7.1",
         "jschardet": "^3.0.0"
     },
     "devDependencies": {
