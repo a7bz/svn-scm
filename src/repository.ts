@@ -1103,7 +1103,8 @@ export class Repository implements IRemoteRepository {
 
         return result;
       } catch (err) {
-        if (err.svnErrorCode === svnErrorCodes.NotASvnRepository) {
+        const e = err as Error & { svnErrorCode?: string };
+        if (e.svnErrorCode === svnErrorCodes.NotASvnRepository) {
           this.state = RepositoryState.Disposed;
         }
 
@@ -1137,14 +1138,15 @@ export class Repository implements IRemoteRepository {
         this.saveAuth();
         return result;
       } catch (err) {
+        const e = err as Error & { svnErrorCode?: string };
         if (
-          err.svnErrorCode === svnErrorCodes.RepositoryIsLocked &&
+          e.svnErrorCode === svnErrorCodes.RepositoryIsLocked &&
           attempt <= 10
         ) {
           // quatratic backoff
           await timeout(Math.pow(attempt, 2) * 50);
         } else if (
-          err.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
+          e.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
           attempt <= 1 + accounts.length
         ) {
           // First attempt load all stored auths
@@ -1159,7 +1161,7 @@ export class Repository implements IRemoteRepository {
             this.password = accounts[index].password;
           }
         } else if (
-          err.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
+          e.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
           attempt <= 3 + accounts.length
         ) {
           const result = await this.promptAuth();

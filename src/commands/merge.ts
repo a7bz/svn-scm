@@ -28,8 +28,9 @@ export class Merge extends Command {
     try {
       await repository.merge(branch.path, reintegrate);
     } catch (error) {
-      if (typeof error === "object" && error.hasOwnProperty("stderrFormated")) {
-        if (error.stderrFormated.includes("try updating first")) {
+      const e = error as any;
+      if (e != null && typeof e === "object" && "stderrFormated" in e) {
+        if ((e.stderrFormated as string).includes("try updating first")) {
           const answer = await window.showErrorMessage(
             "Seems like you need to update first prior to merging. " +
               "Would you like to update now and try merging again?",
@@ -42,7 +43,7 @@ export class Merge extends Command {
           }
         } else {
           window.showErrorMessage(
-            "Unable to merge branch: " + error.stderrFormated
+            "Unable to merge branch: " + (error as any).stderrFormated
           );
         }
       } else {

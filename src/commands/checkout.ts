@@ -97,8 +97,9 @@ export class Checkout extends Command {
         });
         break;
       } catch (err) {
+        const e = err as Error & { svnErrorCode?: string };
         if (
-          err.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
+          e.svnErrorCode === svnErrorCodes.AuthorizationFailed &&
           attempt <= 3
         ) {
           const auth = (await commands.executeCommand(

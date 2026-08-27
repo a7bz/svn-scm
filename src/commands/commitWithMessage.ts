@@ -57,7 +57,7 @@ export class CommitWithMessage extends Command {
       repository.inputBox.value = "";
     } catch (error) {
       console.error(error);
-      window.showErrorMessage(error.stderrFormated);
+      window.showErrorMessage((error as any).stderrFormated);
     }
   }
 }

@@ -1,6 +1,5 @@
 import * as cp from "child_process";
 import { EventEmitter } from "events";
-import * as proc from "process";
 import { Readable } from "stream";
 import {
   ConstructorPolicy,
@@ -128,18 +127,18 @@ export class Svn {
     }
 
     const defaults: cp.SpawnOptions = {
-      env: proc.env
+      env: process.env
     };
     if (cwd) {
       defaults.cwd = cwd;
     }
 
-    defaults.env = Object.assign({}, proc.env, options.env || {}, {
+    defaults.env = Object.assign({}, process.env, options.env || {}, {
       LC_ALL: "en_US.UTF-8",
       LANG: "en_US.UTF-8"
     });
 
-    const process = cp.spawn(this.svnPath, args, defaults);
+    const child = cp.spawn(this.svnPath, args, defaults);
 
     const disposables: IDisposable[] = [];
 
@@ -163,20 +162,20 @@ export class Svn {
 
     const [exitCode, stdout, stderr] = await Promise.all<any>([
       new Promise<number>((resolve, reject) => {
-        once(process, "error", reject);
-        once(process, "exit", resolve);
+        once(child, "error", reject);
+        once(child, "exit", resolve);
       }),
       new Promise<Buffer>(resolve => {
         const buffers: Buffer[] = [];
-        on(process.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(process.stdout as Readable, "close", () =>
+        on(child.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
+        once(child.stdout as Readable, "close", () =>
           resolve(Buffer.concat(buffers))
         );
       }),
       new Promise<string>(resolve => {
         const buffers: Buffer[] = [];
-        on(process.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(process.stderr as Readable, "close", () =>
+        on(child.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
+        once(child.stderr as Readable, "close", () =>
           resolve(Buffer.concat(buffers).toString())
         );
       })
@@ -265,18 +264,18 @@ export class Svn {
     args.push("--non-interactive");
 
     const defaults: cp.SpawnOptions = {
-      env: proc.env
+      env: process.env
     };
     if (cwd) {
       defaults.cwd = cwd;
     }
 
-    defaults.env = Object.assign({}, proc.env, options.env || {}, {
+    defaults.env = Object.assign({}, process.env, options.env || {}, {
       LC_ALL: "en_US.UTF-8",
       LANG: "en_US.UTF-8"
     });
 
-    const process = cp.spawn(this.svnPath, args, defaults);
+    const child = cp.spawn(this.svnPath, args, defaults);
 
     const disposables: IDisposable[] = [];
 
@@ -300,20 +299,20 @@ export class Svn {
 
     const [exitCode, stdout, stderr] = await Promise.all<any>([
       new Promise<number>((resolve, reject) => {
-        once(process, "error", reject);
-        once(process, "exit", resolve);
+        once(child, "error", reject);
+        once(child, "exit", resolve);
       }),
       new Promise<Buffer>(resolve => {
         const buffers: Buffer[] = [];
-        on(process.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(process.stdout as Readable, "close", () =>
+        on(child.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
+        once(child.stdout as Readable, "close", () =>
           resolve(Buffer.concat(buffers))
         );
       }),
       new Promise<string>(resolve => {
         const buffers: Buffer[] = [];
-        on(process.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(process.stderr as Readable, "close", () =>
+        on(child.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
+        once(child.stderr as Readable, "close", () =>
           resolve(Buffer.concat(buffers).toString())
         );
       })

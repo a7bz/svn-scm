@@ -499,7 +499,7 @@ export class Repository {
               return [];
             })
           )
-        ).reduce((acc, cur) => acc.concat(cur), [file]);
+        ).reduce((acc: string[], cur: string[]) => acc.concat(cur), [file]);
       }
       return [file];
     };

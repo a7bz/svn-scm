@@ -83,7 +83,8 @@ async function _activate(context: ExtensionContext, disposables: Disposable[]) {
     try {
       await init(context, outputChannel, disposables);
     } catch (err) {
-      if (!/Svn installation not found/.test(err.message || "")) {
+      const e = err as Error;
+      if (!/Svn installation not found/.test(e.message || "")) {
         throw err;
       }
 
@@ -94,8 +95,8 @@ async function _activate(context: ExtensionContext, disposables: Disposable[]) {
         return;
       }
 
-      console.warn(err.message);
-      outputChannel.appendLine(err.message);
+      console.warn(e.message);
+      outputChannel.appendLine(e.message);
       outputChannel.show();
 
       const findSvnExecutable = "Find SVN executable";
