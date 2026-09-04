@@ -10,7 +10,7 @@
  * 说明:
  *   - 自动为 Node 17+ 注入 --openssl-legacy-provider (避免旧依赖的 OpenSSL 哈希报错)
  *   - vsce 打包使用 --no-dependencies, 兼容 pnpm 的 symlink node_modules
- *   - 产物: svn-scm-<version>.vsix
+ *   - 产物: <name>-<version>.vsix (name 取自 package.json)
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -46,15 +46,19 @@ function run(cmd, args, opts = {}) {
   }
 }
 
-function packageVersion() {
+function packageField(field, fallback) {
   try {
     const pkg = JSON.parse(
       readFileSync(path.join(root, "package.json"), "utf8")
     );
-    return pkg.version || "0.0.0";
+    return pkg[field] || fallback;
   } catch {
-    return "0.0.0";
+    return fallback;
   }
+}
+
+function packageVersion() {
+  return packageField("version", "0.0.0");
 }
 
 function runTypeCheck() {
@@ -67,7 +71,10 @@ function runBuild() {
 }
 
 function runPackage() {
-  const out = path.join(root, `svn-scm-${packageVersion()}.vsix`);
+  const out = path.join(
+    root,
+    `${packageField("name", "extension")}-${packageVersion()}.vsix`
+  );
   run(vsce, ["package", "--no-dependencies", "-o", out]);
   console.log(`\n[package] 打包完成: ${out}`);
 }

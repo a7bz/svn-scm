@@ -1,4 +1,4 @@
-import * as cp from "child_process";
+﻿import * as cp from "child_process";
 import { ChildProcess, SpawnOptions } from "child_process";
 import * as fs from "original-fs";
 import * as path from "path";
@@ -172,13 +172,13 @@ export function destroyAllTempPaths() {
 
     try {
       dir.removeCallback();
-    } catch (error) {}
+    } catch (error) { }
   }
 }
 
 export function activeExtension() {
   return new Promise<void>((resolve, reject) => {
-    const extension = extensions.getExtension("johnstoncode.svn-scm");
+    const extension = extensions.getExtension("a7bz.svn-a7bz");
     if (!extension) {
       reject();
       return;

@@ -3,10 +3,10 @@ name: build
 on:
   push:
     branches:
-      - 'master'
+      - "master"
   pull_request:
-    branches: 
-      - '*'
+    branches:
+      - "*"
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        version: ['stable', 'insiders']
+        version: ["stable", "insiders"]
 
     steps:
       - name: Clone repository
@@ -30,13 +30,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
         shell: bash
-      
+
       - name: Compile sources for tests
         run: pnpm run test-compile
 
@@ -49,7 +49,7 @@ jobs:
           restore-keys: |
             vscode-${{ runner.os }}-${{ matrix.version }}-
             vscode-${{ runner.os }}-
-      
+
       - name: Run tests
         uses: coactions/setup-xvfb@v1
         with:
@@ -59,7 +59,7 @@ jobs:
         continue-on-error: ${{ matrix.version == 'insiders' }}
 
       - name: Release
-        if: startsWith(matrix.os, 'ubuntu') && matrix.version == 'stable' && github.ref == 'refs/heads/master' && github.repository == 'JohnstonCode/svn-scm'
+        if: startsWith(matrix.os, 'ubuntu') && matrix.version == 'stable' && github.ref == 'refs/heads/master' && github.repository == 'a7bz/svn-scm'
         run: |
           pnpm run organize
           pnpm run semantic-release
@@ -86,8 +86,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -110,8 +110,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile

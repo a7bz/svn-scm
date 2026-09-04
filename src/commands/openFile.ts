@@ -46,7 +46,7 @@ export class OpenFile extends Command {
 
       if (!(resource instanceof Resource)) {
         // can happen when called from a keybinding
-        // TODO(@JohnstonCode) fix this
+        // TODO(@a7bz) fix this
         // resource = this.getSCMResource();
       }
 

@@ -4,5 +4,5 @@
 /node_modules
 /out
 /test-reports
-svn-scm*.vsix
+*.vsix
 doc
