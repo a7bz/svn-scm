@@ -21,6 +21,7 @@ import { OpenFile } from "./commands/openFile";
 import { OpenHeadFile } from "./commands/openHeadFile";
 import { OpenResourceBase } from "./commands/openResourceBase";
 import { OpenResourceHead } from "./commands/openResourceHead";
+import { OpenConflict } from "./commands/openConflict";
 import { Patch } from "./commands/patch";
 import { PatchAll } from "./commands/patchAll";
 import { PatchChangeList } from "./commands/patchChangeList";
@@ -65,6 +66,7 @@ export function registerCommands(
   disposables.push(new OpenResourceBase());
   disposables.push(new OpenResourceHead());
   disposables.push(new OpenChangeBase());
+  disposables.push(new OpenConflict());
   disposables.push(new SwitchBranch());
   disposables.push(new Merge());
   disposables.push(new Revert());
