@@ -1,9 +1,15 @@
-﻿# Subversion source control for VS Code
+﻿> **⚠️ Fork Notice**
+> This is a **fork** of [JohnstonCode/svn-scm](https://github.com/JohnstonCode/svn-scm) with enhancements.
+> Original work is licensed under MIT. This fork is **not affiliated** with the original author.
+>
+> For a detailed list of changes, see [DIFFERENCES.md](./DIFFERENCES.md).
 
-![Visual Studio Marketplace Release Date](https://img.shields.io/visual-studio-marketplace/release-date/a7bz.svn-a7bz)
-![Visual Studio Marketplace Last Updated](https://img.shields.io/visual-studio-marketplace/last-updated/a7bz.svn-a7bz)
-![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/a7bz.svn-a7bz)
-![Visual Studio Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/a7bz.svn-a7bz)
+# Subversion source control for VS Code
+
+![Visual Studio Marketplace Release Date](https://img.shields.io/visual-studio-marketplace/release-date/a7bz.svn-enhanced-by-a7bz)
+![Visual Studio Marketplace Last Updated](https://img.shields.io/visual-studio-marketplace/last-updated/a7bz.svn-enhanced-by-a7bz)
+![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/a7bz.svn-enhanced-by-a7bz)
+![Visual Studio Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/a7bz.svn-enhanced-by-a7bz)
 
 ![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/a7bz/svn-scm/main.yml?branch=master)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
@@ -31,6 +37,24 @@ If you use [TortoiseSVN](https://tortoisesvn.net/), make sure the option
 ## [Contributors](https://github.com/a7bz/svn-scm/graphs/contributors)
 
 # Features
+
+> The following features are **new in this fork** (see [DIFFERENCES.md](./DIFFERENCES.md)):
+
+### Three-Way Merge Editor
+
+Resolve SVN conflicts visually with VS Code's built-in three-way merge editor.
+Left-click a conflicted file in the Source Control view or run
+`SVN: Open Conflict Merge Resolution` to open BASE / incoming / working copy side
+by side; the merged result is written back to the working copy.
+
+### Sub-Repositories Detection
+
+Automatically scans workspace sub-folders for independent SVN repositories and
+suggests enabling them. Detected candidates appear under
+**Other SVN repositories** in the SVN activity bar; use
+`SVN: Enable sub-repositories detection` to open them all at once.
+
+---
 
 ### Checkout
 
@@ -151,6 +175,12 @@ Here are all of the extension settings with their default values. To change any 
 
   // Folders to ignore using SVN
   "svn.multipleFolders.ignore": ["**/.git","**/.hg","**/vendor","**/node_modules"],
+
+  // Automatically scan the workspace sub-folders for SVN repositories and suggest enabling sub-repository detection.
+  "svn.subRepositories.autoScan.enabled": true,
+
+  // Whether the 'sub-folders with SVN repositories' notification has been dismissed.
+  "svn.subRepositories.detectedDismissed": false,
 
   // Path to the svn executable
   "svn.path": null,
