@@ -16,26 +16,43 @@ export class OpenConflict extends Command {
     this.runByRepository(selection[0].resourceUri, async (repo, result) => {
       const info = await repo.repository.getInfo(result.fsPath);
 
+      const conflict = info.conflict;
       if (
-        !info.conflict ||
-        !info.conflict.curBaseFile ||
-        !info.conflict.prevWcFile ||
-        !info.conflict.prevBaseFile
+        !conflict ||
+        !conflict.curBaseFile ||
+        !conflict.prevWcFile ||
+        !conflict.prevBaseFile
       ) {
         return;
       }
 
-      const input1 = Uri.file(info.conflict.curBaseFile);
-      const input2 = Uri.file(info.conflict.prevWcFile);
-      const base = Uri.file(info.conflict.prevBaseFile);
+      const base = Uri.file(conflict.prevBaseFile);
+      const current = Uri.file(conflict.prevWcFile);
+      const incoming = Uri.file(conflict.curBaseFile);
 
-      // TODO: _open.mergeEditor is not currently exposed to non-builtin VSCode extensions.
-      // Update the command when there is an externally facing API.
-      // See https://github.com/microsoft/vscode/blob/main/extensions/git/src/commands.ts for example usage.
+      const versions = Array.isArray(conflict.version)
+        ? conflict.version
+        : [conflict.version];
+      const incomingSide = versions.find(v => v.side === "source-right");
+      const incomingRevision = incomingSide ? incomingSide.revision : undefined;
+
+      // Mirrors the built-in git extension usage of the internal
+      // "_open.mergeEditor" command: input1 = Current (ours), input2 =
+      // Incoming (theirs), base/output as plain Uri.
       await commands.executeCommand("_open.mergeEditor", {
         base,
-        input1,
-        input2,
+        input1: {
+          uri: current,
+          title: "Current",
+          detail: "Local working copy (.mine)"
+        },
+        input2: {
+          uri: incoming,
+          title: "Incoming",
+          detail: incomingRevision
+            ? `Incoming changes (r${incomingRevision})`
+            : "Incoming changes"
+        },
         output: result
       });
     });
