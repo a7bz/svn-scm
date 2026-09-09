@@ -1,8 +1,8 @@
 {
-  "name": "svn-a7bz",
-  "displayName": "SVN-a7bz",
-  "description": "Integrated Subversion source control",
-  "version": "2.17.1",
+  "name": "svn-enhanced-by-a7bz",
+  "displayName": "SVN Enhanced (a7bz)",
+  "description": "An enhanced SVN integration for VS Code, forked from JohnstonCode/svn-scm with additional features and fixes. NOT affiliated with the original project.",
+  "version": "2.17.2",
   "publisher": "a7bz",
   "engines": {
     "vscode": "^1.53.0",
@@ -15,7 +15,7 @@
   "homepage": "https://github.com/a7bz/svn-scm/blob/master/README.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/a7bz/svn-scm.git"
+    "url": "https://github.com/a7bz/svn-scm"
   },
   "bugs": {
     "url": "https://github.com/a7bz/svn-scm/issues"
@@ -24,11 +24,14 @@
     "Other",
     "SCM Providers"
   ],
+  "license": "MIT",
   "keywords": [
-    "multi-root ready",
-    "scm",
     "svn",
-    "subversion"
+    "subversion",
+    "enhanced",
+    "fork",
+    "a7bz",
+    "scm"
   ],
   "activationEvents": [
     "onStartupFinished"

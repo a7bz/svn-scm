@@ -25,6 +25,10 @@ vsc-extension-quickstart.md
 images/docs/**
 bin
 vite.config.ts
+.gitignore
+.yarnrc
+.github/**
+DIFFERENCES.md
 
 out/**
 !out/extension.js*
