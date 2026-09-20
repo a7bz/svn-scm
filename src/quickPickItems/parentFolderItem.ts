@@ -1,12 +1,12 @@
-import { QuickPickItem } from "vscode";
+import { l10n, QuickPickItem } from "vscode";
 
 export default class ParentFolderItem implements QuickPickItem {
   constructor(public path?: string) {}
 
   get label(): string {
-    return `$(arrow-left) back to /${this.path}`;
+    return l10n.t(`$(arrow-left) back to /${this.path}`);
   }
   get description(): string {
-    return `Back to parent`;
+    return l10n.t(`Back to parent`);
   }
 }

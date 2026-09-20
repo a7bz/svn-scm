@@ -1,5 +1,5 @@
 import * as path from "path";
-import { ThemeIcon, TreeItem, TreeItemCollapsibleState } from "vscode";
+import { l10n, ThemeIcon, TreeItem, TreeItemCollapsibleState } from "vscode";
 import BaseNode from "./baseNode";
 
 export default class CandidateRepositoryNode implements BaseNode {
@@ -15,7 +15,7 @@ export default class CandidateRepositoryNode implements BaseNode {
     item.contextValue = "svnCandidateRepo";
     item.command = {
       command: "svn.openCandidateRepository",
-      title: "Open repository",
+      title: l10n.t("Open repository"),
       arguments: [this.repoPath]
     };
 

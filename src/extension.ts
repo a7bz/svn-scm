@@ -1,5 +1,6 @@
 import * as path from "path";
 import {
+  l10n,
   commands,
   Disposable,
   ExtensionContext,
@@ -99,11 +100,13 @@ async function _activate(context: ExtensionContext, disposables: Disposable[]) {
       outputChannel.appendLine(e.message);
       outputChannel.show();
 
-      const findSvnExecutable = "Find SVN executable";
-      const download = "Download SVN";
-      const neverShowAgain = "Don't Show Again";
+      const findSvnExecutable = l10n.t("Find SVN executable");
+      const download = l10n.t("Download SVN");
+      const neverShowAgain = l10n.t("Don't Show Again");
       const choice = await window.showWarningMessage(
-        "SVN not found. Install it or configure it using the 'svn.path' setting.",
+        l10n.t(
+          "SVN not found. Install it or configure it using the 'svn.path' setting."
+        ),
         findSvnExecutable,
         download,
         neverShowAgain

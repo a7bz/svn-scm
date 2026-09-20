@@ -1,11 +1,11 @@
-import { QuickPickItem } from "vscode";
+import { l10n, QuickPickItem } from "vscode";
 
 export default class NewChangeListItem implements QuickPickItem {
   get label(): string {
-    return "$(plus) New changelist";
+    return l10n.t("$(plus) New changelist");
   }
 
   get description(): string {
-    return "Create a new change list";
+    return l10n.t("Create a new change list");
   }
 }

@@ -1,4 +1,4 @@
-import { TreeItem, TreeItemCollapsibleState } from "vscode";
+import { l10n, TreeItem, TreeItemCollapsibleState } from "vscode";
 import { Repository } from "../../repository";
 import { getIconUri } from "../../uri";
 import BaseNode from "./baseNode";
@@ -10,7 +10,7 @@ export default class IncomingChangesNode implements BaseNode {
 
   public getTreeItem(): TreeItem {
     const item = new TreeItem(
-      "Incoming Changes",
+      l10n.t("Incoming Changes"),
       TreeItemCollapsibleState.Collapsed
     );
     item.iconPath = {

@@ -1,7 +1,7 @@
 // Only this file is allowed to import VSCode modules
 // tslint:disable: import-blacklist
 
-import { env, window } from "vscode";
+import { l10n, env, window } from "vscode";
 
 declare const __webpack_require__: typeof require;
 declare const __non_webpack_require__: typeof require;
@@ -32,7 +32,7 @@ function getNodeModule<T>(
   }
 
   if (showError) {
-    window.showErrorMessage(`Missing dependency: ${moduleName}`);
+    window.showErrorMessage(l10n.t(`Missing dependency: ${moduleName}`));
   }
 
   return undefined;

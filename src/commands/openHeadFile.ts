@@ -1,5 +1,5 @@
 import { posix as path } from "path";
-import { commands, Uri, window } from "vscode";
+import { l10n, commands, Uri, window } from "vscode";
 import { Resource } from "../resource";
 import IncomingChangeNode from "../treeView/nodes/incomingChangeNode";
 import { Command } from "./command";
@@ -31,7 +31,7 @@ export class OpenHeadFile extends Command {
     const basename = path.basename(resource.resourceUri.path);
     if (!HEAD) {
       window.showWarningMessage(
-        `"HEAD version of '${basename}' is not available."`
+        l10n.t(`"HEAD version of '${basename}' is not available."`)
       );
       return;
     }

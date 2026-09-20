@@ -3,6 +3,7 @@ import * as path from "path";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import {
+  l10n,
   commands,
   env,
   TextDocumentShowOptions,
@@ -32,6 +33,12 @@ export class SvnPath {
   constructor(private path: string) {}
   public toString(): string {
     return this.path;
+  }
+  public get name(): string {
+    const value = this.path.replace(/[\\/]+$/, "");
+    const index = Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\"));
+    const name = index >= 0 ? value.slice(index + 1) : value;
+    return name || this.path;
   }
 }
 
@@ -82,7 +89,9 @@ export function getIconObject(iconName: string): { light: Uri; dark: Uri } {
 export async function copyCommitToClipboard(what: string, item: ILogTreeItem) {
   const clipboard = (env as any).clipboard;
   if (clipboard === undefined) {
-    window.showErrorMessage("Clipboard is supported in VS Code 1.30 and newer");
+    window.showErrorMessage(
+      l10n.t("Clipboard is supported in VS Code 1.30 and newer")
+    );
     return;
   }
   if (item.kind === LogTreeItemKind.Commit) {
@@ -128,7 +137,7 @@ export function insertBaseMarker(
       i++;
     }
     const titem = new TreeItem("BASE");
-    titem.tooltip = "Log entries above do not exist in working copy";
+    titem.tooltip = l10n.t("Log entries above do not exist in working copy");
     out.splice(i, 0, { kind: LogTreeItemKind.TItem, data: titem });
   }
   return undefined;
@@ -140,7 +149,7 @@ export async function checkIfFile(
 ): Promise<boolean | undefined> {
   if (e.localFullPath === undefined) {
     if (local) {
-      window.showErrorMessage("No working copy for this path");
+      window.showErrorMessage(l10n.t("No working copy for this path"));
     }
     return undefined;
   }
@@ -149,12 +158,12 @@ export async function checkIfFile(
     stat = await lstat(e.localFullPath.fsPath);
   } catch {
     window.showWarningMessage(
-      "Not available from this working copy: " + e.localFullPath
+      l10n.t("Not available from this working copy: ") + e.localFullPath
     );
     return false;
   }
   if (!stat.isFile()) {
-    window.showErrorMessage("This target is not a file");
+    window.showErrorMessage(l10n.t("This target is not a file"));
     return false;
   }
   return true;
@@ -231,12 +240,12 @@ export function getCommitIcon(
 
 export function getCommitDescription(commit: ISvnLogEntry): string {
   const relativeDate = dayjs(commit.date).fromNow();
-  return `r${commit.revision}, ${relativeDate} by ${commit.author}`;
+  return l10n.t(`r${commit.revision}, ${relativeDate} by ${commit.author}`);
 }
 
 export function getCommitLabel(commit: ISvnLogEntry): string {
   if (!commit.msg) {
-    return "<blank>";
+    return l10n.t("<blank>");
   }
   return commit.msg.split(/\r?\n/, 1)[0];
 }
@@ -246,10 +255,12 @@ export function getCommitToolTip(commit: ISvnLogEntry): string {
   if (!isNaN(Date.parse(date))) {
     date = new Date(date).toString();
   }
-  return `Author: ${commit.author}
+  return l10n.t(
+    `Author: ${commit.author}
 ${date}
 Revision: ${commit.revision}
-Message: ${commit.msg}`;
+Message: ${commit.msg}`
+  );
 }
 
 async function downloadFile(
@@ -263,8 +274,8 @@ async function downloadFile(
     const localPath = ri.localFullPath;
     if (localPath === undefined || !(await exists(localPath.path))) {
       const errorMsg =
-        "BASE revision doesn't exist for " +
-        (localPath ? localPath.path : "remote path");
+        l10n.t("BASE revision doesn't exist for ") +
+        (localPath ? localPath.path : l10n.t("remote path"));
       window.showErrorMessage(errorMsg);
       throw new Error(errorMsg);
     }
@@ -274,7 +285,7 @@ async function downloadFile(
   try {
     out = await repo.show(arg, revision);
   } catch (e) {
-    window.showErrorMessage("Failed to open path");
+    window.showErrorMessage(l10n.t("Failed to open path"));
     throw e;
   }
   return tempSvnFs.createTempSvnRevisionFile(arg, revision, out);
@@ -305,7 +316,7 @@ export async function openFileRemote(
   try {
     out = await repo.show(arg, against);
   } catch {
-    window.showErrorMessage("Failed to open path");
+    window.showErrorMessage(l10n.t("Failed to open path"));
     return;
   }
   const localUri = await tempSvnFs.createTempSvnRevisionFile(arg, against, out);

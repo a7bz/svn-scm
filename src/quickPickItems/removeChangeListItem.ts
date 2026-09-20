@@ -1,11 +1,11 @@
-import { QuickPickItem } from "vscode";
+import { l10n, QuickPickItem } from "vscode";
 
 export default class RemoveChangeListItem implements QuickPickItem {
   get label(): string {
-    return "$(dash) Remove changelist";
+    return l10n.t("$(dash) Remove changelist");
   }
 
   get description(): string {
-    return "Remove changelist of file(s)";
+    return l10n.t("Remove changelist of file(s)");
   }
 }

@@ -1,6 +1,7 @@
 import * as path from "path";
 import { clearInterval, setInterval } from "timers";
 import {
+  l10n,
   commands,
   Disposable,
   Event,
@@ -93,27 +94,27 @@ export class Repository implements IRemoteRepository {
   }
 
   private _onDidChangeRepository = new EventEmitter<Uri>();
-  public readonly onDidChangeRepository: Event<Uri> = this
-    ._onDidChangeRepository.event;
+  public readonly onDidChangeRepository: Event<Uri> =
+    this._onDidChangeRepository.event;
 
   private _onDidChangeState = new EventEmitter<RepositoryState>();
-  public readonly onDidChangeState: Event<RepositoryState> = this
-    ._onDidChangeState.event;
+  public readonly onDidChangeState: Event<RepositoryState> =
+    this._onDidChangeState.event;
 
   private _onDidChangeStatus = new EventEmitter<void>();
-  public readonly onDidChangeStatus: Event<void> = this._onDidChangeStatus
-    .event;
+  public readonly onDidChangeStatus: Event<void> =
+    this._onDidChangeStatus.event;
 
   private _onDidChangeRemoteChangedFiles = new EventEmitter<void>();
-  public readonly onDidChangeRemoteChangedFile: Event<void> = this
-    ._onDidChangeRemoteChangedFiles.event;
+  public readonly onDidChangeRemoteChangedFile: Event<void> =
+    this._onDidChangeRemoteChangedFiles.event;
 
   private _onRunOperation = new EventEmitter<Operation>();
   public readonly onRunOperation: Event<Operation> = this._onRunOperation.event;
 
   private _onDidRunOperation = new EventEmitter<Operation>();
-  public readonly onDidRunOperation: Event<Operation> = this._onDidRunOperation
-    .event;
+  public readonly onDidRunOperation: Event<Operation> =
+    this._onDidRunOperation.event;
 
   @memoize
   get onDidChangeOperations(): Event<void> {
@@ -207,11 +208,12 @@ export class Repository implements IRemoteRepository {
     );
 
     this.sourceControl.count = 0;
-    this.sourceControl.inputBox.placeholder =
-      "Message (press Ctrl+Enter to commit)";
+    this.sourceControl.inputBox.placeholder = l10n.t(
+      "Message (press Ctrl+Enter to commit)"
+    );
     this.sourceControl.acceptInputCommand = {
       command: "svn.commitWithMessage",
-      title: "commit",
+      title: l10n.t("commit"),
       arguments: [this.sourceControl]
     };
     this.sourceControl.quickDiffProvider = this;
@@ -227,15 +229,15 @@ export class Repository implements IRemoteRepository {
 
     this.changes = this.sourceControl.createResourceGroup(
       "changes",
-      "Changes"
+      l10n.t("Changes")
     ) as ISvnResourceGroup;
     this.conflicts = this.sourceControl.createResourceGroup(
       "conflicts",
-      "Conflicts"
+      l10n.t("Conflicts")
     ) as ISvnResourceGroup;
     this.unversioned = this.sourceControl.createResourceGroup(
       "unversioned",
-      "Unversioned"
+      l10n.t("Unversioned")
     ) as ISvnResourceGroup;
 
     this.changes.hideWhenEmpty = true;
@@ -654,7 +656,7 @@ export class Repository implements IRemoteRepository {
 
       this.unversioned = this.sourceControl.createResourceGroup(
         "unversioned",
-        "Unversioned"
+        l10n.t("Unversioned")
       ) as ISvnResourceGroup;
 
       this.unversioned.hideWhenEmpty = true;
@@ -684,7 +686,7 @@ export class Repository implements IRemoteRepository {
 
       this.remoteChanges = this.sourceControl.createResourceGroup(
         "remotechanges",
-        "Remote Changes"
+        l10n.t("Remote Changes")
       ) as ISvnResourceGroup;
 
       this.remoteChanges.repository = this;

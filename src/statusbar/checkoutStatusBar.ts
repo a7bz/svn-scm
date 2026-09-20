@@ -1,4 +1,4 @@
-import { Command, Disposable, Event, EventEmitter } from "vscode";
+import { l10n, Command, Disposable, Event, EventEmitter } from "vscode";
 import { Operation } from "../common/types";
 import { Repository } from "../repository";
 
@@ -33,12 +33,12 @@ export class CheckoutStatusBar {
       this.repository.operations.isRunning(Operation.NewBranch);
 
     const title = `$(git-branch) ${this.repository.currentBranch}${
-      isSwitchRunning ? ` (Switching)` : ""
+      isSwitchRunning ? l10n.t(" (Switching)") : ""
     }`;
 
     return {
       command: "svn.switchBranch",
-      tooltip: "Switch Branch...",
+      tooltip: l10n.t("Switch Branch..."),
       title,
       arguments: [this.repository.sourceControl]
     };

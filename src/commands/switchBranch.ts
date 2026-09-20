@@ -1,4 +1,4 @@
-import { window } from "vscode";
+import { l10n, window } from "vscode";
 import { selectBranch } from "../helpers/branch";
 import { Repository } from "../repository";
 import { Command } from "./command";
@@ -18,8 +18,8 @@ export class SwitchBranch extends Command {
     try {
       if (branch.isNew) {
         const commitMessage = await window.showInputBox({
-          value: `Created new branch ${branch.name}`,
-          prompt: `Commit message for create branch ${branch.name}`
+          value: l10n.t(`Created new branch ${branch.name}`),
+          prompt: l10n.t(`Commit message for create branch ${branch.name}`)
         });
 
         // If press ESC on commit message
@@ -39,13 +39,15 @@ export class SwitchBranch extends Command {
             "stderrFormated" in e &&
             (e.stderrFormated as string).includes("ignore-ancestry")
           ) {
+            const yes = l10n.t("Yes");
             const answer = await window.showErrorMessage(
-              "Seems like these branches don't have a common ancestor. " +
-                " Do you want to retry with '--ignore-ancestry' option?",
-              "Yes",
-              "No"
+              l10n.t(
+                "Seems like these branches don't have a common ancestor. Do you want to retry with '--ignore-ancestry' option?"
+              ),
+              yes,
+              l10n.t("No")
             );
-            if (answer === "Yes") {
+            if (answer === yes) {
               await repository.switchBranch(branch.path, true);
             }
           } else {
@@ -56,9 +58,9 @@ export class SwitchBranch extends Command {
     } catch (error) {
       console.log(error);
       if (branch.isNew) {
-        window.showErrorMessage("Unable to create new branch");
+        window.showErrorMessage(l10n.t("Unable to create new branch"));
       } else {
-        window.showErrorMessage("Unable to switch branch");
+        window.showErrorMessage(l10n.t("Unable to switch branch"));
       }
     }
   }

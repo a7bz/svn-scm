@@ -1,5 +1,6 @@
 import * as path from "path";
 import {
+  l10n,
   commands,
   Disposable,
   Event,
@@ -33,12 +34,12 @@ import {
 } from "./common";
 
 export class ItemLogProvider
-  implements TreeDataProvider<ILogTreeItem>, Disposable {
-  private _onDidChangeTreeData: EventEmitter<
-    ILogTreeItem | undefined
-  > = new EventEmitter<ILogTreeItem | undefined>();
-  public readonly onDidChangeTreeData: Event<ILogTreeItem | undefined> = this
-    ._onDidChangeTreeData.event;
+  implements TreeDataProvider<ILogTreeItem>, Disposable
+{
+  private _onDidChangeTreeData: EventEmitter<ILogTreeItem | undefined> =
+    new EventEmitter<ILogTreeItem | undefined>();
+  public readonly onDidChangeTreeData: Event<ILogTreeItem | undefined> =
+    this._onDidChangeTreeData.event;
 
   private currentItem?: ICachedLog;
   private _dispose: Disposable[] = [];
@@ -92,7 +93,7 @@ export class ItemLogProvider
     const item = unwrap(this.currentItem);
     const pos = item.entries.findIndex(e => e === commit);
     if (pos === item.entries.length - 1) {
-      window.showWarningMessage("Cannot diff last commit");
+      window.showWarningMessage(l10n.t("Cannot diff last commit"));
       return;
     }
     const prevRev = item.entries[pos + 1].revision;
@@ -192,12 +193,14 @@ export class ItemLogProvider
       const result = transform(entries, LogTreeItemKind.Commit);
       insertBaseMarker(this.currentItem, entries, result);
       if (!this.currentItem.isComplete) {
-        const ti = new TreeItem(`Load another ${getLimit()} revisions`);
+        const ti = new TreeItem(l10n.t(`Load another ${getLimit()} revisions`));
         const ltItem: ILogTreeItem = {
           kind: LogTreeItemKind.TItem,
           data: ti
         };
-        ti.tooltip = "Paging size may be adjusted using log.length setting";
+        ti.tooltip = l10n.t(
+          "Paging size may be adjusted using log.length setting"
+        );
         ti.command = {
           command: "svn.itemlog.refresh",
           arguments: [element, undefined, true],

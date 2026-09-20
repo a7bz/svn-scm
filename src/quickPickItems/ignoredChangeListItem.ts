@@ -1,4 +1,4 @@
-import { QuickPickItem } from "vscode";
+import { l10n, QuickPickItem } from "vscode";
 
 export default class IgnoredChangeListItem implements QuickPickItem {
   constructor(protected _id: string) {}
@@ -8,6 +8,6 @@ export default class IgnoredChangeListItem implements QuickPickItem {
   }
 
   get description(): string {
-    return "Ignored on commit";
+    return l10n.t("Ignored on commit");
   }
 }

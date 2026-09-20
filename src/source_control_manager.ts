@@ -1,6 +1,7 @@
 import { Stats } from "original-fs";
 import * as path from "path";
 import {
+  l10n,
   commands,
   ConfigurationChangeEvent,
   ConfigurationTarget,
@@ -44,24 +45,24 @@ type State = "uninitialized" | "initialized";
 
 export class SourceControlManager implements IDisposable {
   private _onDidOpenRepository = new EventEmitter<Repository>();
-  public readonly onDidOpenRepository: Event<Repository> = this
-    ._onDidOpenRepository.event;
+  public readonly onDidOpenRepository: Event<Repository> =
+    this._onDidOpenRepository.event;
 
   private _onDidCloseRepository = new EventEmitter<Repository>();
-  public readonly onDidCloseRepository: Event<Repository> = this
-    ._onDidCloseRepository.event;
+  public readonly onDidCloseRepository: Event<Repository> =
+    this._onDidCloseRepository.event;
 
   private _onDidChangeRepository = new EventEmitter<RepositoryChangeEvent>();
-  public readonly onDidChangeRepository: Event<RepositoryChangeEvent> = this
-    ._onDidChangeRepository.event;
+  public readonly onDidChangeRepository: Event<RepositoryChangeEvent> =
+    this._onDidChangeRepository.event;
 
   private _onDidChangeStatusRepository = new EventEmitter<Repository>();
-  public readonly onDidChangeStatusRepository: Event<Repository> = this
-    ._onDidChangeStatusRepository.event;
+  public readonly onDidChangeStatusRepository: Event<Repository> =
+    this._onDidChangeStatusRepository.event;
 
   private _onDidChangeCandidates = new EventEmitter<string[]>();
-  public readonly onDidChangeCandidates: Event<string[]> = this
-    ._onDidChangeCandidates.event;
+  public readonly onDidChangeCandidates: Event<string[]> =
+    this._onDidChangeCandidates.event;
 
   public openRepositories: IOpenRepository[] = [];
   private disposables: Disposable[] = [];
@@ -123,12 +124,12 @@ export class SourceControlManager implements IDisposable {
       this
     );
 
-    return ((async (): Promise<SourceControlManager> => {
+    return (async (): Promise<SourceControlManager> => {
       if (this.enabled) {
         await this.enable();
       }
       return this;
-    })() as unknown) as SourceControlManager;
+    })() as unknown as SourceControlManager;
   }
 
   public openRepositoriesSorted(): IOpenRepository[] {
@@ -396,14 +397,16 @@ export class SourceControlManager implements IDisposable {
       return;
     }
 
-    const enable = "Enable sub-repositories detection";
-    const showList = "Show detected repositories";
-    const never = "Don't Show Again";
+    const enable = l10n.t("Enable sub-repositories detection");
+    const showList = l10n.t("Show detected repositories");
+    const never = l10n.t("Don't Show Again");
 
     const choice = await window.showInformationMessage(
-      `Detected ${candidates.length} SVN ${
-        candidates.length === 1 ? "repository" : "repositories"
-      } inside sub-folders of the workspace.`,
+      l10n.t(
+        "Detected {0} SVN {1} inside sub-folders of the workspace.",
+        candidates.length,
+        candidates.length === 1 ? l10n.t("repository") : l10n.t("repositories")
+      ),
       enable,
       showList,
       never
@@ -448,7 +451,7 @@ export class SourceControlManager implements IDisposable {
     });
 
     const pick = await window.showQuickPick(picks, {
-      placeHolder: "Choose a repository to open"
+      placeHolder: l10n.t("Choose a repository to open")
     });
 
     return pick && pick.path;
@@ -692,7 +695,7 @@ export class SourceControlManager implements IDisposable {
         repository
       };
     });
-    const placeHolder = "Choose a repository";
+    const placeHolder = l10n.t("Choose a repository");
     const pick = await window.showQuickPick(picks, { placeHolder });
 
     return pick && pick.repository;

@@ -1,4 +1,4 @@
-import { commands, Uri, window } from "vscode";
+import { l10n, commands, Uri, window } from "vscode";
 import { inputSwitchChangelist } from "../changelistItems";
 import { SourceControlManager } from "../source_control_manager";
 import { Resource } from "../resource";
@@ -37,7 +37,9 @@ export class ChangeList extends Command {
 
     if (repositories.length === 0) {
       window.showErrorMessage(
-        "Files are not under version control and cannot be added to a change list"
+        l10n.t(
+          "Files are not under version control and cannot be added to a change list"
+        )
       );
       return;
     }
@@ -46,14 +48,16 @@ export class ChangeList extends Command {
 
     if (uniqueRepositories.length !== 1) {
       window.showErrorMessage(
-        "Unable to add files from different repositories to change list"
+        l10n.t("Unable to add files from different repositories to change list")
       );
       return;
     }
 
     if (repositories.length !== uris.length) {
       window.showErrorMessage(
-        "Some Files are not under version control and cannot be added to a change list"
+        l10n.t(
+          "Some Files are not under version control and cannot be added to a change list"
+        )
       );
       return;
     }
@@ -96,21 +100,25 @@ export class ChangeList extends Command {
       } catch (error) {
         console.log(error);
         window.showErrorMessage(
-          `Unable to remove file "${paths.join(",")}" from changelist`
+          l10n.t(`Unable to remove file "${paths.join(",")}" from changelist`)
         );
       }
     } else {
       try {
         await repository.addChangelist(paths, changelistName);
         window.showInformationMessage(
-          `Added files "${paths.join(",")}" to changelist "${changelistName}"`
+          l10n.t(
+            `Added files "${paths.join(",")}" to changelist "${changelistName}"`
+          )
         );
       } catch (error) {
         console.log(error);
         window.showErrorMessage(
-          `Unable to add file "${paths.join(
-            ","
-          )}" to changelist "${changelistName}"`
+          l10n.t(
+            `Unable to add file "${paths.join(
+              ","
+            )}" to changelist "${changelistName}"`
+          )
         );
       }
     }

@@ -1,4 +1,4 @@
-import { SourceControlResourceState, Uri, commands } from "vscode";
+import { l10n, SourceControlResourceState, Uri, commands } from "vscode";
 import { Command } from "./command";
 
 export class OpenConflict extends Command {
@@ -43,15 +43,15 @@ export class OpenConflict extends Command {
         base,
         input1: {
           uri: current,
-          title: "Current",
-          detail: "Local working copy (.mine)"
+          title: l10n.t("Current"),
+          detail: l10n.t("Local working copy (.mine)")
         },
         input2: {
           uri: incoming,
-          title: "Incoming",
+          title: l10n.t("Incoming"),
           detail: incomingRevision
-            ? `Incoming changes (r${incomingRevision})`
-            : "Incoming changes"
+            ? l10n.t(`Incoming changes (r${incomingRevision})`)
+            : l10n.t("Incoming changes")
         },
         output: result
       });

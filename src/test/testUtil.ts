@@ -172,7 +172,7 @@ export function destroyAllTempPaths() {
 
     try {
       dir.removeCallback();
-    } catch (error) { }
+    } catch (error) {}
   }
 }
 
@@ -221,8 +221,8 @@ export function overrideNextShowQuickPick(value: any) {
 
 const originalShowQuickPick = window.showQuickPick;
 
-window.showQuickPick = (
-  items: any[] | Thenable<any[]>,
+window.showQuickPick = ((
+  items: readonly any[] | Thenable<readonly any[]>,
   ...args: any[]
 ): Thenable<any | undefined> => {
   let next = overridesShowQuickPick.shift();
@@ -237,4 +237,4 @@ window.showQuickPick = (
   return new Promise((resolve, _reject) => {
     resolve(next);
   });
-};
+}) as any;

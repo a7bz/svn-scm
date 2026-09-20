@@ -1,4 +1,4 @@
-import { SourceControlResourceState, window } from "vscode";
+import { l10n, SourceControlResourceState, window } from "vscode";
 import { exists, lstat, unlink } from "../fs";
 import { deleteDirectory } from "../util";
 import { Command } from "./command";
@@ -14,13 +14,14 @@ export class DeleteUnversioned extends Command {
       return;
     }
     const uris = selection.map(resource => resource.resourceUri);
+    const yes = l10n.t("Yes");
     const answer = await window.showWarningMessage(
-      "Would you like to delete selected files?",
+      l10n.t("Would you like to delete selected files?"),
       { modal: true },
-      "Yes",
-      "No"
+      yes,
+      l10n.t("No")
     );
-    if (answer === "Yes") {
+    if (answer === yes) {
       for (const uri of uris) {
         const fsPath = uri.fsPath;
 
