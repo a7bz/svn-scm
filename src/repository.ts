@@ -842,8 +842,12 @@ export class Repository implements IRemoteRepository {
   }
 
   public async pullIncomingChange(path: string) {
+    return this.pullIncomingChanges([path]);
+  }
+
+  public async pullIncomingChanges(files: string[]) {
     return this.run<string>(Operation.Update, async () => {
-      const response = await this.repository.pullIncomingChange(path);
+      const response = await this.repository.pullIncomingChanges(files);
       this.updateRemoteChangedFiles();
       return response;
     });

@@ -23,7 +23,8 @@ import { parseInfoXml } from "./parser/infoParser";
 import { parseSvnList } from "./parser/listParser";
 import { parseSvnLog } from "./parser/logParser";
 import { parseStatusXml } from "./parser/statusParser";
-import { Svn, BufferResult } from "./svn";
+import { svnErrorCodes, Svn, BufferResult } from "./svn";
+import SvnError from "./svnError";
 import {
   fixPathSeparator,
   fixPegRevision,
@@ -707,18 +708,35 @@ export class Repository {
   }
 
   public async pullIncomingChange(path: string): Promise<string> {
-    const args = ["update", path];
+    return this.pullIncomingChanges([path]);
+  }
 
-    const result = await this.exec(args);
-
-    this.resetInfoCache();
-
-    const message = result.stdout.trim().split(/\r?\n/).pop();
-
-    if (message) {
-      return message;
+  public async pullIncomingChanges(files: string[]): Promise<string> {
+    if (files.length === 0) {
+      return this.update();
     }
-    return result.stdout;
+
+    try {
+      const result = await this.exec(["update", ...files]);
+
+      this.resetInfoCache();
+
+      const message = result.stdout.trim().split(/\r?\n/).pop();
+
+      if (message) {
+        return message;
+      }
+      return result.stdout;
+    } catch (error) {
+      if (
+        error instanceof SvnError &&
+        error.svnErrorCode === svnErrorCodes.NotASvnRepository
+      ) {
+        return this.update();
+      }
+
+      throw error;
+    }
   }
 
   public async patch(files: string[]) {

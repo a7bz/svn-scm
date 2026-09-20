@@ -43,13 +43,11 @@ export class PullIncommingChange extends Command {
 
       const files = resources.map(resource => resource.fsPath);
 
-      files.forEach(async path => {
-        const result = await repository.pullIncomingChange(path);
+      const result = await repository.pullIncomingChanges(files);
 
-        if (showUpdateMessage) {
-          window.showInformationMessage(result);
-        }
-      });
+      if (showUpdateMessage) {
+        window.showInformationMessage(result);
+      }
     });
   }
 }
