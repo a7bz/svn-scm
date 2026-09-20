@@ -316,26 +316,67 @@ export class RepoLogProvider
     this._onDidChangeTreeData.fire(element);
   }
 
+  private getRepositoryName(repo: Repository): string {
+    const uri = Uri.file(repo.workspaceRoot);
+    const folder = workspace.getWorkspaceFolder(uri);
+    return folder && folder.uri.toString() === uri.toString()
+      ? folder.name
+      : path.basename(repo.workspaceRoot);
+  }
+
+  private getDuplicateRepoDescription(
+    cached: ICachedLog,
+    name: string
+  ): string | undefined {
+    const repo = cached.repo;
+    if (!(repo instanceof Repository)) {
+      return undefined;
+    }
+    for (const other of this.logCache.values()) {
+      if (other.repo === repo) {
+        continue;
+      }
+      if (
+        other.repo instanceof Repository &&
+        this.getRepositoryName(other.repo) === name
+      ) {
+        return workspace.asRelativePath(
+          Uri.file(path.dirname(repo.workspaceRoot))
+        );
+      }
+    }
+    return undefined;
+  }
+
   public async getTreeItem(element: ILogTreeItem): Promise<TreeItem> {
     let ti: TreeItem;
     if (element.kind === LogTreeItemKind.Repo) {
       const svnTarget = element.data as SvnPath;
       const cached = this.getCached(element);
-      ti = new TreeItem(svnTarget.name, TreeItemCollapsibleState.Collapsed);
-      ti.description = svnTarget.toString();
+      const from = cached.persisted.commitFrom || "HEAD";
+
+      if (cached.repo instanceof Repository) {
+        // 与 VS Code 源代码管理面板一致的命名逻辑：
+        // 主标签为本地工作副本文件夹名，存在同名仓库时用父目录相对路径去重
+        const name = this.getRepositoryName(cached.repo);
+        ti = new TreeItem(name, TreeItemCollapsibleState.Collapsed);
+        ti.description = this.getDuplicateRepoDescription(cached, name);
+        ti.tooltip = `${svnTarget} since ${from}`;
+        ti.iconPath = new ThemeIcon("folder-opened");
+      } else {
+        // 远程仓库（用户手动添加）：保持原有显示
+        ti = new TreeItem(svnTarget.name, TreeItemCollapsibleState.Collapsed);
+        ti.description = svnTarget.toString();
+        ti.tooltip = `${svnTarget} since ${from}`;
+        ti.iconPath = new ThemeIcon("repo");
+      }
+
       if (cached.persisted.userAdded) {
         ti.label = "∘ " + ti.label;
         ti.contextValue = "userrepo";
       } else {
         ti.contextValue = "repo";
       }
-      if (cached.repo instanceof Repository) {
-        ti.iconPath = new ThemeIcon("folder-opened");
-      } else {
-        ti.iconPath = new ThemeIcon("repo");
-      }
-      const from = cached.persisted.commitFrom || "HEAD";
-      ti.tooltip = `${svnTarget} since ${from}`;
     } else if (element.kind === LogTreeItemKind.Commit) {
       const commit = element.data as ISvnLogEntry;
       ti = new TreeItem(
