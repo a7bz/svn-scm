@@ -1291,7 +1291,7 @@
         "svn.refresh.remoteChanges": {
           "type": "boolean",
           "description": "%svn.config.refresh.remoteChanges.description%",
-          "default": false
+          "default": true
         },
         "svn.remoteChanges.checkFrequency": {
           "type": "number",

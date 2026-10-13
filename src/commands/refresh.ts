@@ -10,7 +10,7 @@ export class Refresh extends Command {
   public async execute(repository: Repository) {
     const refreshRemoteChanges = configuration.get<boolean>(
       "refresh.remoteChanges",
-      false
+      true
     );
 
     await repository.status();

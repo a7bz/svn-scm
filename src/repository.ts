@@ -146,6 +146,7 @@ export class Repository implements IRemoteRepository {
 
     if (this.remoteChanges) {
       this.remoteChanges.dispose();
+      this.remoteChanges = undefined;
     }
 
     this.isIncomplete = false;
@@ -271,7 +272,7 @@ export class Repository implements IRemoteRepository {
 
     this.createRemoteChangedInterval();
 
-    this.updateRemoteChangedFiles();
+    this.refreshRemoteChanges();
 
     // On change config, dispose current interval and create a new.
     configuration.onDidChange(e => {
@@ -282,9 +283,20 @@ export class Repository implements IRemoteRepository {
 
         this.createRemoteChangedInterval();
 
-        this.updateRemoteChangedFiles();
+        this.refreshRemoteChanges();
       }
     });
+
+    // Recheck the remote repository when the window regains focus, so that
+    // commits pushed by other users show up without waiting for the next
+    // scheduled poll (or a manual refresh).
+    this.disposables.push(
+      window.onDidChangeWindowState(e => {
+        if (e.focused) {
+          this.refreshRemoteChanges();
+        }
+      })
+    );
 
     this.status();
 
@@ -312,7 +324,7 @@ export class Repository implements IRemoteRepository {
     }
 
     this.remoteChangedUpdateInterval = setInterval(() => {
-      this.updateRemoteChangedFiles();
+      this.refreshRemoteChanges();
     }, 1000 * updateFreq);
   }
 
@@ -385,13 +397,42 @@ export class Repository implements IRemoteRepository {
 
   @debounce(1000)
   public async updateRemoteChangedFiles() {
+    await this.checkRemoteChanges();
+  }
+
+  /**
+   * Refresh the incoming (remote) changes in the background. This is wired to
+   * the scheduled interval and to the window focus event so that commits made
+   * by other users become visible without a manual refresh.
+   */
+  @debounce(1000)
+  private async refreshRemoteChanges() {
+    await this.checkRemoteChanges();
+  }
+
+  private async checkRemoteChanges() {
     const updateFreq = configuration.get<number>(
       "remoteChanges.checkFrequency",
       300
     );
 
-    if (updateFreq) {
-      this.run(Operation.StatusRemote);
+    // A positive frequency enables remote change checking; only a falsy value
+    // (e.g. 0) disables the feature and clears the group.
+    if (updateFreq !== 0) {
+      // Avoid piling up remote checks (e.g. rapid window focus changes or a
+      // slow server) while one is still running.
+      if (this.operations.isRunning(Operation.StatusRemote)) {
+        return;
+      }
+
+      try {
+        await this.run(Operation.StatusRemote);
+      } catch (error) {
+        // The operation already reports errors to the user; swallow the
+        // rejection so background refreshes (interval/focus) never become
+        // unhandled promise rejections.
+        console.error(error);
+      }
     } else {
       // Remove list of remote changes
       if (this.remoteChanges) {

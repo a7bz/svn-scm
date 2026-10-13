@@ -189,7 +189,7 @@ Here are all of the extension settings with their default values. To change any 
   "svn.previousCommitsUser": null,
 
   // Refresh remote changes on refresh command
-  "svn.refresh.remoteChanges": null,
+  "svn.refresh.remoteChanges": true,
 
   // Set the interval in seconds to check changed files on remote repository and show in statusbar. 0 to disable
   "svn.remoteChanges.checkFrequency": 300,
