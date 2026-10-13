@@ -51,14 +51,14 @@ export class Repository {
     policy: ConstructorPolicy
   ) {
     if (policy === ConstructorPolicy.LateInit) {
-      return ((async (): Promise<Repository> => {
+      return (async (): Promise<Repository> => {
         return this;
-      })() as unknown) as Repository;
+      })() as unknown as Repository;
     }
-    return ((async (): Promise<Repository> => {
+    return (async (): Promise<Repository> => {
       await this.updateInfo();
       return this;
-    })() as unknown) as Repository;
+    })() as unknown as Repository;
   }
 
   public async updateInfo() {
@@ -357,9 +357,8 @@ export class Repository {
         }
       }
     } else {
-      const svnEncoding: string | undefined = configuration.get<string>(
-        "default.encoding"
-      );
+      const svnEncoding: string | undefined =
+        configuration.get<string>("default.encoding");
       if (svnEncoding) {
         encoding = svnEncoding;
       }
@@ -486,7 +485,9 @@ export class Repository {
       if ((await stat(file)).isDirectory()) {
         return (
           await Promise.all(
-            (await readdir(file)).map(subfile => {
+            (
+              await readdir(file)
+            ).map(subfile => {
               const abspath = path.resolve(file + path.sep + subfile);
               const relpath = this.removeAbsolutePath(abspath);
               if (

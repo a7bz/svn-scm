@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as testUtil from "./testUtil";
 
 suite("Extension Tests", () => {
-  setup(async () => { });
+  setup(async () => {});
 
   teardown(() => {
     testUtil.destroyAllTempPaths();
