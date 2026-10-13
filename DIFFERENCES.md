@@ -53,6 +53,40 @@ This document lists all changes made in this fork compared to the original
   conflicting with the global `process`.
 - Added explicit generic types to the `reduce` calls in `svnRepository.ts`.
 
+### 3. Incoming (remote) changes sometimes not visible
+- Commits made by other users were only detected by the periodic poll
+  (`svn.remoteChanges.checkFrequency`, default 300 s), and the **Refresh**
+  command did not check the server by default (`svn.refresh.remoteChanges`
+  defaulted to `false`).
+- Incoming changes are now re-checked when the VS Code window regains focus,
+  and the default of `svn.refresh.remoteChanges` is now `true` so a manual
+  refresh also surfaces remote commits.
+- Remote checks no longer run concurrently (guarded via the operation state)
+  and background refresh failures no longer produce unhandled rejections.
+
+### 4. XML parser error handling
+- `infoParser`, `logParser`, `listParser`, `diffParser` and `statusParser`
+  called `reject()` without `return`, so a parse error still fell through to
+  `resolve()` (and could throw on undefined data). They now reject and return.
+
+### 5. Tree view listener leak
+- `RepositoryNode` registered a `onDidChangeStatus` listener on every tree
+  refresh without ever disposing it. Nodes are now cached per repository in
+  `SvnProvider` and disposed with their listeners, and the node also reacts to
+  incoming-change updates.
+
+### 6. Misc small fixes
+- `svn.resolveAll` used `resourceUri.path` (POSIX) instead of `fsPath` and
+  continued iterating after reporting "No Conflicts".
+- `svn.changelist` compared against `resourceUri.path` instead of `fsPath`.
+- `SvnError` no longer overwrites an explicit message with the underlying
+  error message.
+- Removed a leftover `console.log("here")` debug statement.
+- Replaced non-extractable `l10n.t(\`...${x}...\`)` template literals with
+  placeholder-based `l10n.t("... {0} ...", x)` calls across commands and views
+  so the strings are actually translated, and added the new keys to the
+  English/Chinese bundles.
+
 ## Changed Behaviors
 
 - **Build system**: migrated from `yarn + webpack` to `pnpm + vite`.
