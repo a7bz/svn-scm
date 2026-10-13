@@ -256,7 +256,14 @@
       {
         "command": "svn.merge",
         "title": "%svn.command.merge.title%",
-        "category": "%svn.category%"
+        "category": "%svn.category%",
+        "icon": "$(merge)"
+      },
+      {
+        "command": "svn.mergeRevisions",
+        "title": "%svn.command.mergeRevisions.title%",
+        "category": "%svn.category%",
+        "icon": "$(git-merge)"
       },
       {
         "command": "svn.openCandidateRepository",
@@ -461,7 +468,30 @@
         "icon": "$(cloud-download)"
       }
     ],
+    "submenus": [
+      {
+        "id": "svn.branch",
+        "label": "%svn.menu.branch.label%"
+      }
+    ],
     "menus": {
+      "svn.branch": [
+        {
+          "command": "svn.switchBranch",
+          "group": "1_switch",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.merge",
+          "group": "2_merge",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.mergeRevisions",
+          "group": "2_merge",
+          "when": "config.svn.enabled && scmProvider == svn"
+        }
+      ],
       "commandPalette": [
         {
           "command": "svn.add",
@@ -545,6 +575,10 @@
         },
         {
           "command": "svn.merge",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.mergeRevisions",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
         },
         {
@@ -808,11 +842,8 @@
           "when": "config.svn.enabled && scmProvider == svn"
         },
         {
-          "command": "svn.switchBranch",
-          "when": "config.svn.enabled && scmProvider == svn"
-        },
-        {
-          "command": "svn.merge",
+          "submenu": "svn.branch",
+          "group": "1_branch",
           "when": "config.svn.enabled && scmProvider == svn"
         },
         {

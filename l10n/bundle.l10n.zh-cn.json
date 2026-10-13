@@ -135,5 +135,13 @@
   "Pick a previous commit message": "选择历史提交信息",
   "Commit message": "提交信息",
   "Commit": "提交",
-  "Cancel": "取消"
+  "Cancel": "取消",
+  "Merge completed": "合并完成",
+  "Merge now": "立即合并",
+  "Merge preview finished: nothing to merge": "合并预览完成：没有需要合并的内容",
+  "Merge preview finished. The working copy was not modified.": "合并预览完成，工作副本未被修改",
+  "Preview merge (dry-run)": "预览合并（dry-run）",
+  "Show Output": "查看输出",
+  "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)": "请输入要合并的版本号或范围（例如 123、123:456 或 1,2,3）",
+  "Merge {0} from {1} into the current branch": "将 {1} 的 {0} 合并到当前分支"
 }

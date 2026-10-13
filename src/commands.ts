@@ -48,6 +48,7 @@ import { SourceControlManager } from "./source_control_manager";
 import { SearchLogByRevision } from "./commands/search_log_by_revision";
 import { SearchLogByText } from "./commands/search_log_by_text";
 import { Merge } from "./commands/merge";
+import { MergeRevisions } from "./commands/mergeRevisions";
 import { OpenCandidateRepository } from "./commands/openCandidateRepository";
 
 export function registerCommands(
@@ -69,6 +70,7 @@ export function registerCommands(
   disposables.push(new OpenConflict());
   disposables.push(new SwitchBranch());
   disposables.push(new Merge());
+  disposables.push(new MergeRevisions());
   disposables.push(new Revert());
   disposables.push(new Update());
   disposables.push(new PullIncommingChange());

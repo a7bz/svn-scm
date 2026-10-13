@@ -667,19 +667,21 @@ export class Repository {
   public async merge(
     ref: string,
     reintegrate: boolean = false,
-    accept_action: string = "postpone"
-  ) {
+    accept_action: string = "postpone",
+    revisions: string[] = []
+  ): Promise<string> {
     const repoUrl = await this.getRepoUrl();
     const branchUrl = repoUrl + "/" + ref;
 
     let args = ["merge", "--accept", accept_action];
     args = args.concat(reintegrate ? ["--reintegrate"] : []);
+    args = args.concat(revisions);
     args = args.concat([branchUrl]);
 
-    await this.exec(args);
+    const result = await this.exec(args);
 
     this.resetInfoCache();
-    return true;
+    return result.stdout;
   }
 
   public async revert(files: string[], depth: keyof typeof SvnDepth) {

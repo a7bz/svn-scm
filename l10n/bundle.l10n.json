@@ -135,5 +135,13 @@
   "Pick a previous commit message": "Pick a previous commit message",
   "Commit message": "Commit message",
   "Commit": "Commit",
-  "Cancel": "Cancel"
+  "Cancel": "Cancel",
+  "Merge completed": "Merge completed",
+  "Merge now": "Merge now",
+  "Merge preview finished: nothing to merge": "Merge preview finished: nothing to merge",
+  "Merge preview finished. The working copy was not modified.": "Merge preview finished. The working copy was not modified.",
+  "Preview merge (dry-run)": "Preview merge (dry-run)",
+  "Show Output": "Show Output",
+  "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)": "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)",
+  "Merge {0} from {1} into the current branch": "Merge {0} from {1} into the current branch"
 }
