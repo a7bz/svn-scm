@@ -15,7 +15,8 @@ export async function parseInfoXml(content: string): Promise<ISvnInfo> {
       },
       (err, result) => {
         if (err || typeof result.entry === "undefined") {
-          reject();
+          reject(err || new Error("Unable to parse svn info output"));
+          return;
         }
 
         resolve(result.entry);

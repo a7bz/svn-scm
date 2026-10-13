@@ -6,7 +6,8 @@ export async function parseSvnLog(content: string): Promise<ISvnLogEntry[]> {
   return new Promise<ISvnLogEntry[]>((resolve, reject) => {
     xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
       if (err) {
-        reject();
+        reject(err);
+        return;
       }
       let transformed = [];
       if (Array.isArray(result.logentry)) {

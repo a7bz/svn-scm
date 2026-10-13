@@ -6,7 +6,8 @@ export async function parseSvnList(content: string): Promise<ISvnListItem[]> {
   return new Promise<ISvnListItem[]>((resolve, reject) => {
     xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
       if (err) {
-        reject();
+        reject(err);
+        return;
       }
 
       if (result.list && result.list.entry) {

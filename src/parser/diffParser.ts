@@ -15,7 +15,8 @@ export async function parseDiffXml(content: string): Promise<ISvnPath[]> {
       },
       (err, result) => {
         if (err || !result.paths || !result.paths.path) {
-          reject();
+          reject(err || new Error("Unable to parse svn diff output"));
+          return;
         }
 
         if (!Array.isArray(result.paths.path)) {

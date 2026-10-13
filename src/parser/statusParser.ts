@@ -73,7 +73,8 @@ export async function parseStatusXml(content: string): Promise<IFileStatus[]> {
   return new Promise<IFileStatus[]>((resolve, reject) => {
     xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
       if (err) {
-        reject();
+        reject(err);
+        return;
       }
 
       const statusList: IFileStatus[] = xmlToStatus(result);
