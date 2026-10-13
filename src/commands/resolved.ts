@@ -19,7 +19,7 @@ export class Resolved extends Command {
       const basename = path.basename(uri.fsPath);
       const yes = l10n.t("Yes");
       const pick = await window.showWarningMessage(
-        l10n.t(`Mark the conflict as resolved for "${basename}"?`),
+        l10n.t('Mark the conflict as resolved for "{0}"?', basename),
         { modal: true },
         yes,
         l10n.t("No")

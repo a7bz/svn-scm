@@ -41,13 +41,14 @@ export class Upgrade extends Command {
 
       if (upgraded) {
         window.showInformationMessage(
-          l10n.t(`Working copy "${folderPath}" upgraded`)
+          l10n.t('Working copy "{0}" upgraded', folderPath)
         );
         sourceControlManager.tryOpenRepository(folderPath);
       } else {
         window.showErrorMessage(
           l10n.t(
-            `Error on upgrading working copy "${folderPath}". See log for more detail`
+            'Error on upgrading working copy "{0}". See log for more detail',
+            folderPath
           )
         );
       }

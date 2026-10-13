@@ -18,8 +18,8 @@ export class SwitchBranch extends Command {
     try {
       if (branch.isNew) {
         const commitMessage = await window.showInputBox({
-          value: l10n.t(`Created new branch ${branch.name}`),
-          prompt: l10n.t(`Commit message for create branch ${branch.name}`)
+          value: l10n.t("Created new branch {0}", branch.name),
+          prompt: l10n.t("Commit message for create branch {0}", branch.name)
         });
 
         // If press ESC on commit message

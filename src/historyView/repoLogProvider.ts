@@ -437,7 +437,7 @@ export class RepoLogProvider
       const result = transform(logentries, LogTreeItemKind.Commit, element);
       insertBaseMarker(cached, logentries, result);
       if (!cached.isComplete) {
-        const ti = new TreeItem(l10n.t(`Load another ${limit} revisions`));
+        const ti = new TreeItem(l10n.t("Load another {0} revisions", limit));
         ti.tooltip = l10n.t(
           "Paging size may be adjusted using log.length setting"
         );

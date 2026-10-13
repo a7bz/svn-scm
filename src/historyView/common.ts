@@ -240,7 +240,12 @@ export function getCommitIcon(
 
 export function getCommitDescription(commit: ISvnLogEntry): string {
   const relativeDate = dayjs(commit.date).fromNow();
-  return l10n.t(`r${commit.revision}, ${relativeDate} by ${commit.author}`);
+  return l10n.t(
+    "r{0}, {1} by {2}",
+    commit.revision,
+    relativeDate,
+    commit.author
+  );
 }
 
 export function getCommitLabel(commit: ISvnLogEntry): string {

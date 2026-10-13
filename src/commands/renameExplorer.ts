@@ -35,7 +35,7 @@ export class RenameExplorer extends Command {
       const oldName = path.relative(root, oldFile);
       newName = await window.showInputBox({
         value: path.basename(oldFile),
-        prompt: l10n.t(`New name name for ${oldName}`)
+        prompt: l10n.t("New name name for {0}", oldName)
       });
     }
     if (!newName) {

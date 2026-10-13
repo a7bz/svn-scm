@@ -83,7 +83,7 @@ export class Checkout extends Command {
 
     const progressOptions = {
       location,
-      title: l10n.t(`Checkout svn repository '${url}'...`),
+      title: l10n.t("Checkout svn repository '{0}'...", url),
       cancellable: true
     };
 

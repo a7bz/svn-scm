@@ -12,7 +12,7 @@ export class IgnoreSingleItem implements QuickPickItem {
 
   get description(): string {
     const text = this.recursive ? l10n.t(" (Recursive)") : "";
-    return l10n.t(`Add '${this.expression}' to 'svn:ignore'${text}`);
+    return l10n.t("Add '{0}' to 'svn:ignore'{1}", this.expression, text);
   }
 }
 
@@ -52,13 +52,17 @@ export async function inputIgnoreList(repository: Repository, uris: Uri[]) {
   const count = uris.length;
   const recursive = l10n.t("(Recursive)");
 
-  const ignoreByFileName = l10n.t(`Ignore ${count} by filename`);
-  const ignoreByExtension = l10n.t(`Ignore ${count} by extension`);
+  const ignoreByFileName = l10n.t("Ignore {0} by filename", count);
+  const ignoreByExtension = l10n.t("Ignore {0} by extension", count);
   const ignoreByFileNameRecursive = l10n.t(
-    `Ignore ${count} by filename ${recursive}`
+    "Ignore {0} by filename {1}",
+    count,
+    recursive
   );
   const ignoreByExtensionRecursive = l10n.t(
-    `Ignore ${count} by extension ${recursive}`
+    "Ignore {0} by extension {1}",
+    count,
+    recursive
   );
 
   const picks: string[] = [

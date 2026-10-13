@@ -32,7 +32,7 @@ function getNodeModule<T>(
   }
 
   if (showError) {
-    window.showErrorMessage(l10n.t(`Missing dependency: ${moduleName}`));
+    window.showErrorMessage(l10n.t("Missing dependency: {0}", moduleName));
   }
 
   return undefined;

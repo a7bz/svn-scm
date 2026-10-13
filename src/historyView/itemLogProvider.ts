@@ -193,7 +193,9 @@ export class ItemLogProvider
       const result = transform(entries, LogTreeItemKind.Commit);
       insertBaseMarker(this.currentItem, entries, result);
       if (!this.currentItem.isComplete) {
-        const ti = new TreeItem(l10n.t(`Load another ${getLimit()} revisions`));
+        const ti = new TreeItem(
+          l10n.t("Load another {0} revisions", getLimit())
+        );
         const ltItem: ILogTreeItem = {
           kind: LogTreeItemKind.TItem,
           data: ti

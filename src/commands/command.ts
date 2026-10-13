@@ -482,7 +482,7 @@ export abstract class Command implements Disposable {
         const ignored = await inputIgnoreList(repository, resources);
 
         if (ignored) {
-          window.showInformationMessage(l10n.t(`File(s) is now being ignored`));
+          window.showInformationMessage(l10n.t("File(s) is now being ignored"));
         }
       } catch (error) {
         console.log(error);

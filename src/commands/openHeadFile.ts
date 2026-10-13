@@ -31,7 +31,7 @@ export class OpenHeadFile extends Command {
     const basename = path.basename(resource.resourceUri.path);
     if (!HEAD) {
       window.showWarningMessage(
-        l10n.t(`"HEAD version of '${basename}' is not available."`)
+        l10n.t("\"HEAD version of '{0}' is not available.\"", basename)
       );
       return;
     }

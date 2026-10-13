@@ -50,7 +50,7 @@ export class OpenConflict extends Command {
           uri: incoming,
           title: l10n.t("Incoming"),
           detail: incomingRevision
-            ? l10n.t(`Incoming changes (r${incomingRevision})`)
+            ? l10n.t("Incoming changes (r{0})", incomingRevision)
             : l10n.t("Incoming changes")
         },
         output: result

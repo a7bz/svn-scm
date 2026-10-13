@@ -19,8 +19,8 @@ export default class CandidateRepositoriesNode implements BaseNode {
     );
 
     const label = multipleFolders
-      ? l10n.t(`Other SVN repositories (${candidates.length})`)
-      : l10n.t(`Sub-folder SVN repositories (${candidates.length})`);
+      ? l10n.t("Other SVN repositories ({0})", candidates.length)
+      : l10n.t("Sub-folder SVN repositories ({0})", candidates.length);
 
     const item = new TreeItem(label, TreeItemCollapsibleState.Expanded);
     item.iconPath = new ThemeIcon("repo");
