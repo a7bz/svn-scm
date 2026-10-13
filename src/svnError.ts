@@ -13,12 +13,12 @@ export default class SvnError {
   constructor(data: ISvnErrorData) {
     if (data.error) {
       this.error = data.error;
-      this.message = data.error.message;
+      this.message = data.message || data.error.message;
     } else {
       this.error = void 0;
+      this.message = data.message || "SVN error";
     }
 
-    this.message = data.message || "SVN error";
     this.stdout = data.stdout;
     this.stderr = data.stderr;
     this.stderrFormated = data.stderrFormated;

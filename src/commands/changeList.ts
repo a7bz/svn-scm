@@ -76,7 +76,7 @@ export class ChangeList extends Command {
         group.resourceStates.some(state => {
           return paths.some(path => {
             return (
-              normalizePath(path) === normalizePath(state.resourceUri.path)
+              normalizePath(path) === normalizePath(state.resourceUri.fsPath)
             );
           });
         })
@@ -100,7 +100,7 @@ export class ChangeList extends Command {
       } catch (error) {
         console.log(error);
         window.showErrorMessage(
-          l10n.t(`Unable to remove file "${paths.join(",")}" from changelist`)
+          l10n.t('Unable to remove file "{0}" from changelist', paths.join(","))
         );
       }
     } else {
@@ -108,16 +108,18 @@ export class ChangeList extends Command {
         await repository.addChangelist(paths, changelistName);
         window.showInformationMessage(
           l10n.t(
-            `Added files "${paths.join(",")}" to changelist "${changelistName}"`
+            'Added files "{0}" to changelist "{1}"',
+            paths.join(","),
+            changelistName
           )
         );
       } catch (error) {
         console.log(error);
         window.showErrorMessage(
           l10n.t(
-            `Unable to add file "${paths.join(
-              ","
-            )}" to changelist "${changelistName}"`
+            'Unable to add file "{0}" to changelist "{1}"',
+            paths.join(","),
+            changelistName
           )
         );
       }

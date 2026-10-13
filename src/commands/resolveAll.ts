@@ -13,11 +13,13 @@ export class ResolveAll extends Command {
 
     if (!conflicts.length) {
       window.showInformationMessage(l10n.t("No Conflicts"));
+      return;
     }
 
     for (const conflict of conflicts) {
       const placeHolder = l10n.t(
-        `Select conflict option for ${conflict.resourceUri.path}`
+        "Select conflict option for {0}",
+        conflict.resourceUri.fsPath
       );
       const picks = getConflictPickOptions();
 
@@ -29,7 +31,7 @@ export class ResolveAll extends Command {
 
       try {
         const response = await repository.resolve(
-          [conflict.resourceUri.path],
+          [conflict.resourceUri.fsPath],
           choice.label
         );
         window.showInformationMessage(response);
