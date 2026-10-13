@@ -8,19 +8,22 @@ import {
   window
 } from "vscode";
 import { SourceControlManager } from "../../source_control_manager";
+import { Repository } from "../../repository";
 import BaseNode from "../nodes/baseNode";
 import CandidateRepositoriesNode from "../nodes/candidateRepositoriesNode";
 import RepositoryNode from "../nodes/repositoryNode";
 import { dispose } from "../../util";
 
 export default class SvnProvider
-  implements TreeDataProvider<BaseNode>, Disposable {
-  private _onDidChangeTreeData: EventEmitter<
-    BaseNode | undefined
-  > = new EventEmitter<BaseNode | undefined>();
+  implements TreeDataProvider<BaseNode>, Disposable
+{
+  private _onDidChangeTreeData: EventEmitter<BaseNode | undefined> =
+    new EventEmitter<BaseNode | undefined>();
   private _dispose: Disposable[] = [];
-  public onDidChangeTreeData: Event<BaseNode | undefined> = this
-    ._onDidChangeTreeData.event;
+  private repositoryNodes = new Map<Repository, RepositoryNode>();
+
+  public onDidChangeTreeData: Event<BaseNode | undefined> =
+    this._onDidChangeTreeData.event;
 
   constructor(private sourceControlManager: SourceControlManager) {
     this._dispose.push(
@@ -49,15 +52,36 @@ export default class SvnProvider
       return element.getChildren();
     }
 
-    const nodes: BaseNode[] = this.sourceControlManager.openRepositories.map(
-      repository => {
-        return new RepositoryNode(repository.repository, this);
-      }
+    const repositories = this.sourceControlManager.openRepositories.map(
+      liveRepository => liveRepository.repository
     );
 
-    const candidates = this.sourceControlManager.candidateRepositoryPaths.filter(
-      c => !this.sourceControlManager.getRepository(c)
-    );
+    // Drop cached nodes for repositories that are no longer open, disposing
+    // their event listeners.
+    for (const [repository, node] of this.repositoryNodes) {
+      if (!repositories.includes(repository)) {
+        node.dispose();
+        this.repositoryNodes.delete(repository);
+      }
+    }
+
+    // Reuse the existing node per repository so its listeners are registered
+    // only once, instead of leaking a new subscription on every refresh.
+    const nodes: BaseNode[] = repositories.map(repository => {
+      let node = this.repositoryNodes.get(repository);
+
+      if (!node) {
+        node = new RepositoryNode(repository, this);
+        this.repositoryNodes.set(repository, node);
+      }
+
+      return node;
+    });
+
+    const candidates =
+      this.sourceControlManager.candidateRepositoryPaths.filter(
+        c => !this.sourceControlManager.getRepository(c)
+      );
 
     if (candidates.length > 0) {
       nodes.push(new CandidateRepositoriesNode(this.sourceControlManager));
@@ -71,6 +95,8 @@ export default class SvnProvider
   }
 
   public dispose() {
+    this.repositoryNodes.forEach(node => node.dispose());
+    this.repositoryNodes.clear();
     dispose(this._dispose);
   }
 }
