@@ -178,7 +178,7 @@ export function destroyAllTempPaths() {
 
 export function activeExtension() {
   return new Promise<void>((resolve, reject) => {
-    const extension = extensions.getExtension("a7bz.svn-a7bz");
+    const extension = extensions.getExtension("a7bz.svn-enhanced-by-a7bz");
     if (!extension) {
       reject();
       return;

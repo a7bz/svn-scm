@@ -10,7 +10,7 @@ suite("Extension Tests", () => {
   });
 
   test("should be present", () => {
-    assert.ok(vscode.extensions.getExtension("a7bz.svn-a7bz"));
+    assert.ok(vscode.extensions.getExtension("a7bz.svn-enhanced-by-a7bz"));
   });
 
   // The extension is already activated by vscode before running mocha test framework.
@@ -19,7 +19,7 @@ suite("Extension Tests", () => {
   test("should be able to activate the extension", function (done) {
     this.timeout(60 * 1000);
     const extension = vscode.extensions.getExtension(
-      "a7bz.svn-a7bz"
+      "a7bz.svn-enhanced-by-a7bz"
     ) as vscode.Extension<any>;
 
     if (!extension) {
