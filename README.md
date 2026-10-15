@@ -78,7 +78,17 @@ You can checkout a SVN repository with the `SVN: Checkout` command in the **Comm
 
 ## Blame
 
-Please use a dedicated extension like [blamer-vs](https://marketplace.visualstudio.com/items?itemName=beaugust.blamer-vs)
+This fork ships two built-in blame features, so no extra extension is needed:
+
+- **Blame (Annotate)** — `SVN: Blame (Annotate)` opens a read-only document with
+  every line prefixed by `r<revision> <author> <date> | <line>`. It can be
+  hidden with `svn.blame.enabled`.
+- **Inline blame** — `svn.inlineBlame.enabled` (default `false`) shows the
+  author, date and revision at the end of each line, similar to
+  [blamer-vs](https://marketplace.visualstudio.com/items?itemName=beaugust.blamer-vs).
+  A one-click toggle is added to the editor title bar (top-right) whenever a
+  file is open: `$(eye-closed)` shows inline blame, `$(eye)` hides it.
+  `svn.toggleInlineBlame` in the command palette does the same.
 
 ## Settings
 Here are all of the extension settings with their default values. To change any of these, add the relevant Config key and value to your VSCode settings.json file. Alternatively search for the config key in the settings UI to change its value.
@@ -88,6 +98,12 @@ Here are all of the extension settings with their default values. To change any 
 {
   // Whether auto refreshing is enabled
   "svn.autorefresh": true,
+
+  // Show the "Blame (Annotate)" command in menus and the command palette
+  "svn.blame.enabled": true,
+
+  // Show relative dates (e.g. "2 days ago") in the blame view
+  "svn.blame.relativeDates": false,
 
   // Select all files when commit changes
   "svn.commit.changes.selectedAll": true,
@@ -142,6 +158,24 @@ Here are all of the extension settings with their default values. To change any 
 
   // Ignores the warning when working copy is too old
   "svn.ignoreWorkingCopyIsTooOld": null,
+
+  // Show the author, date and revision at the end of each line in the editor (inline blame). Can be toggled from the editor title bar.
+  "svn.inlineBlame.enabled": false,
+
+  // Show the author in the inline blame annotation
+  "svn.inlineBlame.showAuthor": true,
+
+  // Show the commit date in the inline blame annotation
+  "svn.inlineBlame.showDate": true,
+
+  // Show the revision number in the inline blame annotation
+  "svn.inlineBlame.showRevision": true,
+
+  // Only annotate the first line of each block of lines that share the same revision
+  "svn.inlineBlame.compact": true,
+
+  // dayjs format used for the commit date in the inline blame annotation
+  "svn.inlineBlame.dateFormat": "YYYY-MM-DD",
 
   // Regex to detect path for 'branches' in SVN URL, 'null' to disable. Subpath use 'branches/[^/]+/([^/]+)(/.*)?' (Ex.: 'branches/...', 'versions/...')
   "svn.layout.branchesRegex": "branches/([^/]+)(/.*)?",

@@ -71,6 +71,27 @@ A batch of commands that upstream does not expose, following the existing
   one-click toggle from the editor title bar. Menu entries are gated by
   the new `isSvn17orGreater` context key (locking requires svn >= 1.7).
 
+### 5. Inline blame with an editor-title toggle
+Renders per-line blame information at the end of each line of the active
+editor, similar to the "SVN Blamer" extension, and adds a one-click toggle
+in the editor title bar (top-right) whenever a file is open.
+
+- `svn.inlineBlame.enabled` (default `false`) — master switch for the inline
+  annotations. `svn.showInlineBlame` / `svn.hideInlineBlame` (editor title bar)
+  and `svn.toggleInlineBlame` (command palette) flip it. The title-bar button
+  swaps between the `$(eye-closed)` and `$(eye)` icons through the new
+  `svnInlineBlameEnabled` context key.
+- `svn.inlineBlame.showAuthor` (default `true`), `svn.inlineBlame.showDate`
+  (default `true`), `svn.inlineBlame.showRevision` (default `true`) — control
+  which fields are shown in the annotation.
+- `svn.inlineBlame.compact` (default `true`) — only annotate the first line of
+  each block of consecutive lines that share the same revision.
+- `svn.inlineBlame.dateFormat` (default `"YYYY-MM-DD"`) — `dayjs` format used
+  for the commit date.
+- Annotations are cached per file and invalidated when the working copy status
+  changes; they are hidden while the document has unsaved changes so the line
+  numbers always match the committed revision.
+
 ## Fixed Bugs
 
 ### 1. "Missing dependency" error after packaging/installing
