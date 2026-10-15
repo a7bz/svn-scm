@@ -151,14 +151,20 @@ export class SourceControlManager implements IDisposable {
       true
     );
 
+    // The ignore list is also used by the candidate scan, so keep it in sync
+    // whenever either feature is active. The recursive depth, however, only
+    // applies to the explicit multipleFolders feature: otherwise enabling
+    // autoScan (on by default) would silently auto-open every nested
+    // repository and the candidate list would always be empty.
     if (multipleFolders || autoScan) {
-      this.maxDepth = configuration.get<number>("multipleFolders.depth", 0);
-
       this.ignoreList = configuration.get("multipleFolders.ignore", []);
     } else {
-      this.maxDepth = 0;
       this.ignoreList = [];
     }
+
+    this.maxDepth = multipleFolders
+      ? configuration.get<number>("multipleFolders.depth", 0)
+      : 0;
 
     if (
       event.affectsConfiguration("svn.multipleFolders.enabled") &&
@@ -194,11 +200,16 @@ export class SourceControlManager implements IDisposable {
       true
     );
 
+    // The ignore list is also used by the candidate scan, so keep it in sync
+    // whenever either feature is active. The recursive depth only applies to
+    // the explicit multipleFolders feature (see onDidChangeConfiguration).
     if (multipleFolders || autoScan) {
-      this.maxDepth = configuration.get<number>("multipleFolders.depth", 0);
-
       this.ignoreList = configuration.get("multipleFolders.ignore", []);
     }
+
+    this.maxDepth = multipleFolders
+      ? configuration.get<number>("multipleFolders.depth", 0)
+      : 0;
 
     workspace.onDidChangeWorkspaceFolders(
       this.onDidChangeWorkspaceFolders,
