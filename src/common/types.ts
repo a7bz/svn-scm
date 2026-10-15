@@ -60,6 +60,13 @@ export interface ISvnInfo {
     prevWcFile?: string;
     curBaseFile?: string;
   };
+  lock?: {
+    owner?: string;
+    token?: string;
+    created?: string;
+    expires?: string;
+    comment?: string;
+  };
 }
 
 export interface ISvnPath {
