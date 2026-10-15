@@ -24,6 +24,7 @@ import { toDisposable } from "./util";
 import { BranchChangesProvider } from "./historyView/branchChangesProvider";
 import { IsSvn19orGreater } from "./contexts/isSvn19orGreater";
 import { IsSvn18orGreater } from "./contexts/isSvn18orGreater";
+import { IsSvn17orGreater } from "./contexts/isSvn17orGreater";
 import { tempSvnFs } from "./temp_svn_fs";
 import { SvnFileSystemProvider } from "./svnFileSystemProvider";
 
@@ -56,7 +57,8 @@ async function init(
     new CheckActiveEditor(sourceControlManager),
     new OpenRepositoryCount(sourceControlManager),
     new IsSvn18orGreater(info.version),
-    new IsSvn19orGreater(info.version)
+    new IsSvn19orGreater(info.version),
+    new IsSvn17orGreater(info.version)
   );
 
   outputChannel.appendLine(`Using svn "${info.version}" from "${info.path}"`);

@@ -466,6 +466,77 @@
         "title": "%svn.command.update.title%",
         "category": "%svn.category%",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "svn.blame",
+        "title": "%svn.command.blame.title%",
+        "category": "%svn.category%",
+        "icon": "$(blame)"
+      },
+      {
+        "command": "svn.properties",
+        "title": "%svn.command.properties.title%",
+        "category": "%svn.category%",
+        "icon": "$(symbol-property)"
+      },
+      {
+        "command": "svn.createBranchTag",
+        "title": "%svn.command.createBranchTag.title%",
+        "category": "%svn.category%",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "svn.addAndCommit",
+        "title": "%svn.command.addAndCommit.title%",
+        "category": "%svn.category%",
+        "icon": "$(check)"
+      },
+      {
+        "command": "svn.addAndCommitExplorer",
+        "title": "%svn.command.addAndCommitExplorer.title%",
+        "category": "%svn.category%",
+        "icon": "$(check)"
+      },
+      {
+        "command": "svn.exportPatch",
+        "title": "%svn.command.exportPatch.title%",
+        "category": "%svn.category%",
+        "icon": "$(save)"
+      },
+      {
+        "command": "svn.exportPatchAll",
+        "title": "%svn.command.exportPatchAll.title%",
+        "category": "%svn.category%",
+        "icon": "$(save)"
+      },
+      {
+        "command": "svn.repositoryInfo",
+        "title": "%svn.command.repositoryInfo.title%",
+        "category": "%svn.category%",
+        "icon": "$(info)"
+      },
+      {
+        "command": "svn.manageExternals",
+        "title": "%svn.command.manageExternals.title%",
+        "category": "%svn.category%",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "svn.lock",
+        "title": "%svn.command.lock.title%",
+        "category": "%svn.category%",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "svn.unlock",
+        "title": "%svn.command.unlock.title%",
+        "category": "%svn.category%",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "svn.toggleLock",
+        "title": "%svn.command.toggleLock.title%",
+        "category": "%svn.category%"
       }
     ],
     "submenus": [
@@ -720,6 +791,54 @@
         {
           "command": "svn.update",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.blame",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.properties",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.createBranchTag",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.addAndCommit",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.addAndCommitExplorer",
+          "when": "false"
+        },
+        {
+          "command": "svn.exportPatch",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.exportPatchAll",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.repositoryInfo",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.manageExternals",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.lock",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn17orGreater"
+        },
+        {
+          "command": "svn.unlock",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn17orGreater"
+        },
+        {
+          "command": "svn.toggleLock",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn17orGreater"
         }
       ],
       "view/title": [
@@ -873,6 +992,22 @@
         {
           "command": "svn.patchChangeList",
           "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.exportPatchAll",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.manageExternals",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.repositoryInfo",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.createBranchTag",
+          "when": "config.svn.enabled && scmProvider == svn"
         }
       ],
       "scm/sourceControl": [
@@ -1014,6 +1149,41 @@
           "command": "svn.treeview.pullIncomingChange",
           "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup == remotechanges",
           "group": "3_modification"
+        },
+        {
+          "command": "svn.blame",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != remotechanges",
+          "group": "navigation"
+        },
+        {
+          "command": "svn.properties",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != remotechanges",
+          "group": "navigation"
+        },
+        {
+          "command": "svn.exportPatch",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != conflicts && scmResourceGroup != remotechanges",
+          "group": "navigation"
+        },
+        {
+          "command": "svn.addAndCommit",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup == unversioned",
+          "group": "inline"
+        },
+        {
+          "command": "svn.addAndCommit",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup == unversioned",
+          "group": "1_modification"
+        },
+        {
+          "command": "svn.lock",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != conflicts && scmResourceGroup != remotechanges && isSvn17orGreater",
+          "group": "3_modification"
+        },
+        {
+          "command": "svn.unlock",
+          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != conflicts && scmResourceGroup != remotechanges && isSvn17orGreater",
+          "group": "3_modification"
         }
       ],
       "scm/change/title": [
@@ -1037,6 +1207,16 @@
           "command": "svn.openChangeHead",
           "group": "navigation",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && svnActiveEditorHasChanges && !isInDiffEditor && resourceScheme == file"
+        },
+        {
+          "command": "svn.blame",
+          "group": "navigation",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file"
+        },
+        {
+          "command": "svn.toggleLock",
+          "group": "navigation",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && isSvn17orGreater"
         }
       ],
       "explorer/context": [
@@ -1059,6 +1239,11 @@
           "command": "svn.revertExplorer",
           "group": "7_modification",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.addAndCommitExplorer",
+          "group": "7_modification",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && explorerViewletVisible && filesExplorerFocus && !explorerResourceIsRoot && !inputFocus"
         }
       ]
     },
@@ -1069,6 +1254,11 @@
           "type": "boolean",
           "description": "%svn.config.autorefresh.description%",
           "default": true
+        },
+        "svn.blame.relativeDates": {
+          "type": "boolean",
+          "description": "%svn.config.blame.relativeDates.description%",
+          "default": false
         },
         "svn.commit.changes.selectedAll": {
           "type": "boolean",

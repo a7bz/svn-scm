@@ -81,6 +81,13 @@ export interface ISvnPathChange {
   localPath: Uri;
 }
 
+export interface ISvnBlameLine {
+  lineNumber: number;
+  revision: string;
+  author: string;
+  date: string;
+}
+
 export interface ISvnListItem {
   kind: SvnKindType;
   name: string;
@@ -90,6 +97,27 @@ export interface ISvnListItem {
     author: string;
     date: string;
   };
+}
+
+export interface ISvnProperty {
+  name: string;
+  value: string;
+}
+
+/** A single `svn:externals` definition: `<url>[@<revision>] <local-path>`. */
+export interface ISvnExternal {
+  url: string;
+  path: string;
+  revision?: string;
+}
+
+export interface ISvnLock {
+  path: string;
+  token: string;
+  owner: string;
+  created: string;
+  expires?: string;
+  comment?: string;
 }
 
 export enum SvnKindType {
@@ -119,16 +147,22 @@ export enum RepositoryState {
 export enum Operation {
   Add = "Add",
   AddChangelist = "AddChangelist",
+  Blame = "Blame",
   Changes = "Changes",
   CleanUp = "CleanUp",
   Commit = "Commit",
+  Copy = "Copy",
   CurrentBranch = "CurrentBranch",
   Info = "Info",
   Ignore = "Ignore",
+  Lock = "Lock",
   Log = "Log",
   Merge = "Merge",
   NewBranch = "NewBranch",
   Patch = "Patch",
+  PropGet = "PropGet",
+  PropSet = "PropSet",
+  PropDel = "PropDel",
   Remove = "Remove",
   RemoveChangelist = "RemoveChangelist",
   Rename = "Rename",
@@ -139,6 +173,7 @@ export enum Operation {
   Status = "Status",
   StatusRemote = "StatusRemote",
   SwitchBranch = "SwitchBranch",
+  Unlock = "Unlock",
   Update = "Update",
   List = "List"
 }

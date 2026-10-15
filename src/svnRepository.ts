@@ -6,8 +6,11 @@ import {
   ICpOptions,
   IExecutionResult,
   IFileStatus,
+  ISvnBlameLine,
+  ISvnExternal,
   ISvnInfo,
   ISvnLogEntry,
+  ISvnProperty,
   Status,
   SvnDepth,
   ISvnPathChange,
@@ -19,7 +22,9 @@ import * as encodeUtil from "./encoding";
 import { exists, writeFile, stat, readdir } from "./fs";
 import { getBranchName } from "./helpers/branch";
 import { configuration } from "./helpers/configuration";
+import { parseSvnBlame } from "./parser/blameParser";
 import { parseInfoXml } from "./parser/infoParser";
+import { parseSvnExternals, parseSvnProplist } from "./parser/propertyParser";
 import { parseSvnList } from "./parser/listParser";
 import { parseSvnLog } from "./parser/logParser";
 import { parseStatusXml } from "./parser/statusParser";
@@ -1008,5 +1013,227 @@ export class Repository {
     const result = await this.exec(args);
 
     return result.stdout;
+  }
+
+  /**
+   * `svn blame` for a single file, parsed into per-line metadata.
+   * Returns an empty array when the file has no blame information
+   * (e.g. unversioned).
+   */
+  public async blame(
+    file: string,
+    revision?: string
+  ): Promise<ISvnBlameLine[]> {
+    file = this.removeAbsolutePath(file);
+
+    const args = ["blame", "--xml"];
+
+    if (revision) {
+      args.push("-r", revision);
+    }
+
+    args.push(file);
+
+    const result = await this.exec(args);
+
+    return parseSvnBlame(result.stdout);
+  }
+
+  /**
+   * Copy a working copy path (or a repository URL) to a new path/URL.
+   * `svn copy SRC DST` — used to create branches, tags or local copies.
+   * Without `message` the copy is not committed (only scheduled in the
+   * working copy).
+   */
+  public async copy(
+    source: string | Uri,
+    destination: string | Uri,
+    message?: string
+  ): Promise<string> {
+    const src =
+      source instanceof Uri
+        ? source.toString(true)
+        : this.removeAbsolutePath(source);
+    const dst =
+      destination instanceof Uri
+        ? destination.toString(true)
+        : this.removeAbsolutePath(destination);
+
+    const args = ["copy", src, dst];
+
+    if (message) {
+      args.push("-m", message);
+    }
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /**
+   * Read a single svn property. Returns `undefined` when the property
+   * is not set.
+   */
+  public async propget(
+    propName: string,
+    file: string,
+    revision?: string
+  ): Promise<string | undefined> {
+    file = this.removeAbsolutePath(file);
+
+    const args = ["propget", propName];
+
+    if (revision) {
+      args.push("--revision", revision);
+    }
+
+    args.push(file);
+
+    const result = await this.exec(args);
+
+    const value = result.stdout.replace(/[\r\n]+$/, "");
+
+    return value.length ? value : undefined;
+  }
+
+  /** Set (or replace) an svn property on a path. */
+  public async propset(
+    propName: string,
+    value: string,
+    file: string,
+    recursive: boolean = false
+  ): Promise<string> {
+    file = this.removeAbsolutePath(file);
+
+    const args = ["propset", propName, value, file];
+
+    if (recursive) {
+      args.push("--recursive");
+    }
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /** Delete an svn property from a path. */
+  public async propdel(
+    propName: string,
+    file: string,
+    recursive: boolean = false
+  ): Promise<string> {
+    file = this.removeAbsolutePath(file);
+
+    const args = ["propdel", propName, file];
+
+    if (recursive) {
+      args.push("--recursive");
+    }
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /** List the svn properties set on a path. */
+  public async proplist(file: string): Promise<ISvnProperty[]> {
+    file = this.removeAbsolutePath(file);
+
+    const result = await this.exec(["proplist", "--verbose", "--xml", file]);
+
+    return parseSvnProplist(result.stdout);
+  }
+
+  /**
+   * Read the `svn:externals` definitions for a directory.
+   * Returns an empty array when none are set.
+   */
+  public async getExternals(directory: string): Promise<ISvnExternal[]> {
+    directory = this.removeAbsolutePath(directory);
+
+    const result = await this.exec([
+      "propget",
+      "svn:externals",
+      "--xml",
+      directory
+    ]);
+
+    return parseSvnExternals(result.stdout);
+  }
+
+  /** Replace the `svn:externals` definitions of a directory. */
+  public async setExternals(
+    directory: string,
+    externals: ISvnExternal[]
+  ): Promise<string> {
+    directory = this.removeAbsolutePath(directory);
+
+    const value = externals
+      .map(e =>
+        e.revision ? `${e.url}@${e.revision} ${e.path}` : `${e.url} ${e.path}`
+      )
+      .join("\n");
+
+    const args = ["propset", "svn:externals", value, directory];
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /** `svn lock` — requires svn >= 1.7 */
+  public async lock(files: string[], message?: string): Promise<string> {
+    files = files.map(file => this.removeAbsolutePath(file));
+
+    const args = ["lock", ...files];
+
+    if (message) {
+      args.push("-m", message);
+    }
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /** `svn unlock` */
+  public async unlock(
+    files: string[],
+    force: boolean = false
+  ): Promise<string> {
+    files = files.map(file => this.removeAbsolutePath(file));
+
+    const args = ["unlock", ...files];
+
+    if (force) {
+      args.push("--force");
+    }
+
+    const result = await this.exec(args);
+
+    return result.stdout;
+  }
+
+  /**
+   * Whether the working copy path is locked by someone (including us).
+   * Returns the lock owner, or `undefined` when not locked.
+   */
+  public async getLockOwner(file: string): Promise<string | undefined> {
+    file = this.removeAbsolutePath(file);
+
+    try {
+      const result = await this.exec(["info", "--xml", file]);
+      const info = await parseInfoXml(result.stdout);
+
+      const lock = info.lock;
+
+      if (lock && lock.owner) {
+        return lock.owner;
+      }
+    } catch (error) {
+      // Not locked (or not a repository) — treat as unlocked.
+    }
+
+    return undefined;
   }
 }

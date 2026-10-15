@@ -20,7 +20,10 @@ import {
   IAuth,
   IFileStatus,
   IOperations,
+  ISvnBlameLine,
+  ISvnExternal,
   ISvnInfo,
+  ISvnProperty,
   ISvnResourceGroup,
   Operation,
   RepositoryState,
@@ -1035,6 +1038,98 @@ export class Repository implements IRemoteRepository {
   public async rename(oldFile: string, newFile: string) {
     return this.run(Operation.Rename, () =>
       this.repository.rename(oldFile, newFile)
+    );
+  }
+
+  public async blame(
+    filePath: string,
+    revision?: string
+  ): Promise<ISvnBlameLine[]> {
+    return this.run<ISvnBlameLine[]>(Operation.Blame, () =>
+      this.repository.blame(filePath, revision)
+    );
+  }
+
+  public async copy(
+    source: string | Uri,
+    destination: string | Uri,
+    message?: string
+  ) {
+    return this.run(Operation.Copy, () =>
+      this.repository.copy(source, destination, message)
+    );
+  }
+
+  public async propget(
+    propName: string,
+    filePath: string,
+    revision?: string
+  ): Promise<string | undefined> {
+    return this.run<string | undefined>(Operation.PropGet, () =>
+      this.repository.propget(propName, filePath, revision)
+    );
+  }
+
+  public async propset(
+    propName: string,
+    value: string,
+    filePath: string,
+    recursive: boolean = false
+  ) {
+    return this.run(Operation.PropSet, () =>
+      this.repository.propset(propName, value, filePath, recursive)
+    );
+  }
+
+  public async propdel(
+    propName: string,
+    filePath: string,
+    recursive: boolean = false
+  ) {
+    return this.run(Operation.PropDel, () =>
+      this.repository.propdel(propName, filePath, recursive)
+    );
+  }
+
+  public async proplist(filePath: string): Promise<ISvnProperty[]> {
+    return this.run<ISvnProperty[]>(Operation.PropGet, () =>
+      this.repository.proplist(filePath)
+    );
+  }
+
+  public async getExternals(directory: string): Promise<ISvnExternal[]> {
+    return this.run<ISvnExternal[]>(Operation.PropGet, () =>
+      this.repository.getExternals(directory)
+    );
+  }
+
+  public async setExternals(
+    directory: string,
+    externals: ISvnExternal[]
+  ): Promise<string> {
+    return this.run<string>(Operation.PropSet, () =>
+      this.repository.setExternals(directory, externals)
+    );
+  }
+
+  public async lock(files: string[], message?: string): Promise<string> {
+    return this.run<string>(Operation.Lock, () =>
+      this.repository.lock(files, message)
+    );
+  }
+
+  public async unlock(
+    files: string[],
+    force: boolean = false
+  ): Promise<string> {
+    return this.run<string>(Operation.Unlock, () =>
+      this.repository.unlock(files, force)
+    );
+  }
+
+  public async getLockOwner(filePath: string): Promise<string | undefined> {
+    return this.run<string | undefined>(Operation.Info, () =>
+      this.repository.getLockOwner(filePath)
     );
   }
 
