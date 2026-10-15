@@ -61,11 +61,9 @@ export class CreateBranchTag extends Command {
     const destination = this.buildDestination(repository, name);
 
     try {
-      const result = await repository.copy(sourcePath, destination, message);
+      await repository.copy(sourcePath, destination, message);
 
-      window.showInformationMessage(
-        l10n.t("Created {0} at {1}", kind, name) + (result ? "" : "")
-      );
+      window.showInformationMessage(l10n.t("Created {0} at {1}", kind, name));
     } catch (error) {
       console.error(error);
       const message_ =

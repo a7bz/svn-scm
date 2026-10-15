@@ -107,21 +107,7 @@ export class ToggleLock extends Command {
   }
 
   public async execute(arg?: SourceControlResourceState | Uri) {
-    let uri: Uri | undefined;
-
-    if (arg instanceof Uri) {
-      uri = arg.scheme === "svn" ? Uri.file(JSON.parse(arg.query).fsPath) : arg;
-    } else if (arg && arg.resourceUri) {
-      uri = arg.resourceUri;
-    } else {
-      const resource = await this.getSCMResource();
-
-      if (resource) {
-        uri = resource.resourceUri;
-      } else if (window.activeTextEditor) {
-        uri = window.activeTextEditor.document.uri;
-      }
-    }
+    const uri = await this.getTargetUri(arg);
 
     if (!uri) {
       window.showWarningMessage(l10n.t("Select a file first"));

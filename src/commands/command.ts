@@ -191,6 +191,40 @@ export abstract class Command implements Disposable {
     return;
   }
 
+  /**
+   * Resolve a `file:` URI from a command argument, the selected SCM resource
+   * or the active editor. `svn:` URIs (e.g. from a resource state) are
+   * converted back to their working copy counterpart. Returns `undefined`
+   * when nothing could be resolved; callers decide which message to show.
+   */
+  protected async getTargetUri(
+    arg?: SourceControlResourceState | Uri | IncomingChangeNode
+  ): Promise<Uri | undefined> {
+    let uri: Uri | undefined;
+
+    if (arg instanceof Uri) {
+      uri = arg;
+    } else if (arg instanceof IncomingChangeNode) {
+      uri = arg.uri;
+    } else if (arg && (arg as SourceControlResourceState).resourceUri) {
+      uri = (arg as SourceControlResourceState).resourceUri;
+    } else {
+      const resource = await this.getSCMResource();
+
+      if (resource) {
+        uri = resource.resourceUri;
+      } else if (window.activeTextEditor) {
+        uri = window.activeTextEditor.document.uri;
+      }
+    }
+
+    if (uri && uri.scheme === "svn") {
+      uri = Uri.file(fromSvnUri(uri).fsPath);
+    }
+
+    return uri;
+  }
+
   protected async _openResource(
     resource: Resource,
     against?: string,

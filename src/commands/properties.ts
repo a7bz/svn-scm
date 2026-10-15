@@ -37,6 +37,14 @@ export class Properties extends Command {
     const uri = await this.getTargetUri(arg);
 
     if (!uri) {
+      window.showWarningMessage(l10n.t("Select a file or folder first"));
+      return;
+    }
+
+    if (uri.scheme !== "file") {
+      window.showWarningMessage(
+        l10n.t("Properties are only available for working copy files")
+      );
       return;
     }
 
@@ -100,40 +108,6 @@ export class Properties extends Command {
     } else {
       await this.addProperty(repository, fsPath, pick.property.name);
     }
-  }
-
-  private async getTargetUri(
-    arg?: SourceControlResourceState | Uri
-  ): Promise<Uri | undefined> {
-    let uri: Uri | undefined;
-
-    if (arg instanceof Uri) {
-      uri = arg.scheme === "svn" ? Uri.file(JSON.parse(arg.query).fsPath) : arg;
-    } else if (arg && arg.resourceUri) {
-      uri = arg.resourceUri;
-    } else {
-      const resource = await this.getSCMResource();
-
-      if (resource) {
-        uri = resource.resourceUri;
-      } else if (window.activeTextEditor) {
-        uri = window.activeTextEditor.document.uri;
-      }
-    }
-
-    if (!uri) {
-      window.showWarningMessage(l10n.t("Select a file or folder first"));
-      return undefined;
-    }
-
-    if (uri.scheme !== "file") {
-      window.showWarningMessage(
-        l10n.t("Properties are only available for working copy files")
-      );
-      return undefined;
-    }
-
-    return uri;
   }
 
   private async editProperty(
