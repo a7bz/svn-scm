@@ -261,10 +261,11 @@ export function getCommitToolTip(commit: ISvnLogEntry): string {
     date = new Date(date).toString();
   }
   return l10n.t(
-    `Author: ${commit.author}
-${date}
-Revision: ${commit.revision}
-Message: ${commit.msg}`
+    "Author: {0}\n{1}\nRevision: {2}\nMessage: {3}",
+    commit.author,
+    date,
+    commit.revision,
+    commit.msg
   );
 }
 

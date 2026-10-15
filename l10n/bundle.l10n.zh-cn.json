@@ -168,5 +168,7 @@
   "Missing dependency: {0}": "缺少依赖项：{0}",
   "Unable to remove file \"{0}\" from changelist": "无法从变更列表中移除文件 \"{0}\"",
   "Added files \"{0}\" to changelist \"{1}\"": "已将文件 \"{0}\" 添加到变更列表 \"{1}\"",
-  "Unable to add file \"{0}\" to changelist \"{1}\"": "无法将文件 \"{0}\" 添加到变更列表 \"{1}\""
+  "Unable to add file \"{0}\" to changelist \"{1}\"": "无法将文件 \"{0}\" 添加到变更列表 \"{1}\"",
+  "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?": "文件 \"{0}\" 已从磁盘删除。\n是否要从 SVN 中移除？",
+  "Author: {0}\n{1}\nRevision: {2}\nMessage: {3}": "作者：{0}\n{1}\n版本：{2}\n信息：{3}"
 }

@@ -17,9 +17,8 @@ export class PromptRemove extends Command {
     const yes = l10n.t("Yes");
     const resp = await window.showInformationMessage(
       l10n.t(
-        `The file(s) "${relativeList.join(
-          ", "
-        )}" are removed from disk.\nWould you like remove from SVN?`
+        'The file(s) "{0}" are removed from disk.\nWould you like remove from SVN?',
+        relativeList.join(", ")
       ),
       { modal: false },
       yes,

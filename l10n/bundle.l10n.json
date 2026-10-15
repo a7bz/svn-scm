@@ -168,5 +168,7 @@
   "Missing dependency: {0}": "Missing dependency: {0}",
   "Unable to remove file \"{0}\" from changelist": "Unable to remove file \"{0}\" from changelist",
   "Added files \"{0}\" to changelist \"{1}\"": "Added files \"{0}\" to changelist \"{1}\"",
-  "Unable to add file \"{0}\" to changelist \"{1}\"": "Unable to add file \"{0}\" to changelist \"{1}\""
+  "Unable to add file \"{0}\" to changelist \"{1}\"": "Unable to add file \"{0}\" to changelist \"{1}\"",
+  "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?": "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?",
+  "Author: {0}\n{1}\nRevision: {2}\nMessage: {3}": "Author: {0}\n{1}\nRevision: {2}\nMessage: {3}"
 }
