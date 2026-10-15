@@ -3,34 +3,76 @@ const Module = require("node:module");
 const path = require("node:path");
 const fs = require("node:fs");
 
-// 构造一个任意属性都返回无操作函数的 vscode mock
-const configObj = {
-  get: () => undefined,
-  update: () => Promise.resolve(),
-  inspect: () => undefined,
-  onDidChange: () => ({ dispose() {} })
-};
-const vscodeMock = new Proxy(
-  {},
-  {
-    get(_, prop) {
-      if (prop === Symbol.toStringTag) return "Module";
-      if (prop === "__esModule") return true;
-      if (prop === "Uri") {
-        return function FakeUri(fsPath) {
-          this.fsPath = fsPath;
-          this.scheme = "file";
-          this.path = "/" + fsPath;
-        };
-      }
-      if (prop === "getConfiguration") {
-        return () => configObj;
-      }
-      const fn = function noop() {};
-      return fn;
-    }
+// 构造一个"任意属性可访问、可调用、可 new"的递归 vscode mock。
+// 关键点：属性访问返回的必须仍是一个"可调用代理"，否则形如
+// `workspace.getConfiguration(...)` 的链式访问会因取到普通函数而缺少属性。
+function FakeUri(fsPath) {
+  this.fsPath = fsPath;
+  this.scheme = "file";
+  this.path = "/" + fsPath;
+  this.toString = () => `file://${fsPath}`;
+}
+FakeUri.file = fsPath => new FakeUri(fsPath);
+FakeUri.parse = value => new FakeUri(String(value));
+FakeUri.joinPath = (base, ...parts) =>
+  new FakeUri([base && base.fsPath, ...parts].join("/"));
+
+function FakeDisposable(fn) {
+  this.dispose = typeof fn === "function" ? fn : () => {};
+}
+FakeDisposable.from = (...items) => new FakeDisposable(() => {
+  for (const item of items) {
+    if (item && typeof item.dispose === "function") item.dispose();
   }
-);
+});
+
+function FakeEventEmitter() {
+  this.event = () => new FakeDisposable();
+  this.fire = () => {};
+  this.dispose = () => {};
+}
+
+const cache = new WeakMap();
+
+function makeNoop() {
+  const fn = function noop() {};
+  const proxy = new Proxy(fn, handler);
+  cache.set(fn, proxy);
+  return proxy;
+}
+
+const handler = {
+  get(_target, prop) {
+    if (prop === Symbol.toStringTag) return "Module";
+    if (prop === Symbol.toPrimitive) return () => "";
+    if (prop === "__esModule") return true;
+    if (prop === "then") return undefined; // 避免被当作 thenable
+    if (prop === "Uri") return FakeUri;
+    if (prop === "Disposable") return FakeDisposable;
+    if (prop === "EventEmitter") return FakeEventEmitter;
+    if (prop === "ConfigurationTarget") {
+      return { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
+    }
+    if (prop === "StatusBarAlignment") return { Left: 1, Right: 2 };
+    if (prop === "ViewColumn") return { Active: -1, One: 1, Two: 2 };
+    if (prop === "ThemeIcon") {
+      return function ThemeIcon(id) {
+        this.id = id;
+      };
+    }
+    if (prop === "version") return "0.0.0-mock";
+    if (prop === "env") return { appRoot: process.cwd(), language: "en" };
+    return makeNoop();
+  },
+  apply() {
+    return makeNoop();
+  },
+  construct() {
+    return makeNoop();
+  }
+};
+
+const vscodeMock = new Proxy({}, handler);
 
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, ...rest) {
