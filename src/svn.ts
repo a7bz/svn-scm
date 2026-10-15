@@ -63,6 +63,168 @@ export interface BufferResult {
   stderr: string;
 }
 
+/**
+ * Shared setup for both `exec` and `execBuffer`: builds the argument list
+ * (credentials, non-interactive flag) and the spawn options.
+ */
+function prepareExec(
+  svnPath: string,
+  cwd: string,
+  args: any[],
+  options: ICpOptions,
+  lastCwdRef: { value: string },
+  logOutput: (output: string) => void
+): cp.SpawnOptions {
+  if (cwd) {
+    lastCwdRef.value = cwd;
+    options.cwd = cwd;
+  }
+
+  if (options.log !== false) {
+    const argsOut = args.map(arg => (/ |^$/.test(arg) ? `'${arg}'` : arg));
+    logOutput(
+      `[${lastCwdRef.value.split(/[\\\/]+/).pop()}]$ svn ${argsOut.join(" ")}\n`
+    );
+  }
+
+  if (options.username) {
+    args.push("--username", options.username);
+  }
+  if (options.password) {
+    args.push("--password", options.password);
+  }
+
+  if (options.username || options.password) {
+    // Configuration format: FILE:SECTION:OPTION=[VALUE]
+    // Disable password store
+    args.push("--config-option", "config:auth:password-stores=");
+    // Disable store auth credentials
+    args.push("--config-option", "servers:global:store-auth-creds=no");
+  }
+
+  // Force non interactive environment
+  args.push("--non-interactive");
+
+  const defaults: cp.SpawnOptions = {
+    env: Object.assign({}, process.env, options.env || {}, {
+      LC_ALL: "en_US.UTF-8",
+      LANG: "en_US.UTF-8"
+    })
+  };
+  if (cwd) {
+    defaults.cwd = cwd;
+  }
+
+  return defaults;
+}
+
+/**
+ * Spawns `svn` and collects stdout/stderr. `options.onStdout` receives each
+ * raw chunk so callers can stream output (e.g. `svn log --search`).
+ * `options.onCancel` is invoked to abort the process early.
+ */
+function runSvn(
+  svnPath: string,
+  args: string[],
+  spawnOptions: cp.SpawnOptions,
+  options: ICpOptions
+): Promise<{
+  exitCode: number;
+  stdout: Buffer;
+  stderr: string;
+  child: cp.ChildProcess;
+}> {
+  const child = cp.spawn(svnPath, args, spawnOptions);
+
+  const disposables: IDisposable[] = [];
+
+  const once = (
+    ee: NodeJS.EventEmitter,
+    name: string,
+    fn: (...args: any[]) => void
+  ) => {
+    ee.once(name, fn);
+    disposables.push(toDisposable(() => ee.removeListener(name, fn)));
+  };
+
+  const on = (
+    ee: NodeJS.EventEmitter,
+    name: string,
+    fn: (...args: any[]) => void
+  ) => {
+    ee.on(name, fn);
+    disposables.push(toDisposable(() => ee.removeListener(name, fn)));
+  };
+
+  if (options.onCancel) {
+    const cancel = options.onCancel;
+    options.onCancel = undefined;
+    disposables.push(
+      toDisposable(() => {
+        try {
+          child.kill();
+        } catch {
+          // Process already gone.
+        }
+        cancel();
+      })
+    );
+  }
+
+  const result = Promise.all<any>([
+    new Promise<number>((resolve, reject) => {
+      once(child, "error", reject);
+      once(child, "exit", resolve);
+    }),
+    new Promise<Buffer>(resolve => {
+      const buffers: Buffer[] = [];
+      on(child.stdout as Readable, "data", (b: Buffer) => {
+        buffers.push(b);
+        options.onStdout?.(b);
+      });
+      once(child.stdout as Readable, "close", () =>
+        resolve(Buffer.concat(buffers))
+      );
+    }),
+    new Promise<string>(resolve => {
+      const buffers: Buffer[] = [];
+      on(child.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
+      once(child.stderr as Readable, "close", () =>
+        resolve(Buffer.concat(buffers).toString())
+      );
+    })
+  ]);
+
+  return result
+    .then(([exitCode, stdout, stderr]) => {
+      dispose(disposables);
+      return { exitCode, stdout, stderr, child };
+    })
+    .catch(err => {
+      dispose(disposables);
+      throw err;
+    });
+}
+
+/** Writes stderr to the output channel when logging is enabled. */
+function logStderr(
+  stderr: string,
+  lastCwd: string,
+  logOutput: (output: string) => void
+): void {
+  if (stderr.length === 0) {
+    return;
+  }
+
+  const name = lastCwd.split(/[\\\/]+/).pop();
+  const err = stderr
+    .split("\n")
+    .filter((line: string) => line)
+    .map((line: string) => `[${name}]$ ${line}`)
+    .join("\n");
+  logOutput(err);
+}
+
 export class Svn {
   public version: string;
 
@@ -88,35 +250,14 @@ export class Svn {
     args: any[],
     options: ICpOptions = {}
   ): Promise<IExecutionResult> {
-    if (cwd) {
-      this.lastCwd = cwd;
-      options.cwd = cwd;
-    }
-
-    if (options.log !== false) {
-      const argsOut = args.map(arg => (/ |^$/.test(arg) ? `'${arg}'` : arg));
-      this.logOutput(
-        `[${this.lastCwd.split(/[\\\/]+/).pop()}]$ svn ${argsOut.join(" ")}\n`
-      );
-    }
-
-    if (options.username) {
-      args.push("--username", options.username);
-    }
-    if (options.password) {
-      args.push("--password", options.password);
-    }
-
-    if (options.username || options.password) {
-      // Configuration format: FILE:SECTION:OPTION=[VALUE]
-      // Disable password store
-      args.push("--config-option", "config:auth:password-stores=");
-      // Disable store auth credentials
-      args.push("--config-option", "servers:global:store-auth-creds=no");
-    }
-
-    // Force non interactive environment
-    args.push("--non-interactive");
+    const defaults = prepareExec(
+      this.svnPath,
+      cwd,
+      args,
+      options,
+      this,
+      this.logOutput.bind(this)
+    );
 
     let encoding: string | undefined | null = options.encoding;
     delete options.encoding;
@@ -126,62 +267,12 @@ export class Svn {
       encoding = "utf8";
     }
 
-    const defaults: cp.SpawnOptions = {
-      env: process.env
-    };
-    if (cwd) {
-      defaults.cwd = cwd;
-    }
-
-    defaults.env = Object.assign({}, process.env, options.env || {}, {
-      LC_ALL: "en_US.UTF-8",
-      LANG: "en_US.UTF-8"
-    });
-
-    const child = cp.spawn(this.svnPath, args, defaults);
-
-    const disposables: IDisposable[] = [];
-
-    const once = (
-      ee: NodeJS.EventEmitter,
-      name: string,
-      fn: (...args: any[]) => void
-    ) => {
-      ee.once(name, fn);
-      disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-    };
-
-    const on = (
-      ee: NodeJS.EventEmitter,
-      name: string,
-      fn: (...args: any[]) => void
-    ) => {
-      ee.on(name, fn);
-      disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-    };
-
-    const [exitCode, stdout, stderr] = await Promise.all<any>([
-      new Promise<number>((resolve, reject) => {
-        once(child, "error", reject);
-        once(child, "exit", resolve);
-      }),
-      new Promise<Buffer>(resolve => {
-        const buffers: Buffer[] = [];
-        on(child.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(child.stdout as Readable, "close", () =>
-          resolve(Buffer.concat(buffers))
-        );
-      }),
-      new Promise<string>(resolve => {
-        const buffers: Buffer[] = [];
-        on(child.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(child.stderr as Readable, "close", () =>
-          resolve(Buffer.concat(buffers).toString())
-        );
-      })
-    ]);
-
-    dispose(disposables);
+    const { exitCode, stdout, stderr } = await runSvn(
+      this.svnPath,
+      args as string[],
+      defaults,
+      options
+    );
 
     if (!encoding) {
       encoding = encodeUtil.detectEncoding(stdout);
@@ -202,13 +293,7 @@ export class Svn {
     const decodedStdout = iconv.decode(stdout, encoding);
 
     if (options.log !== false && stderr.length > 0) {
-      const name = this.lastCwd.split(/[\\\/]+/).pop();
-      const err = stderr
-        .split("\n")
-        .filter((line: string) => line)
-        .map((line: string) => `[${name}]$ ${line}`)
-        .join("\n");
-      this.logOutput(err);
+      logStderr(stderr, this.lastCwd, this.logOutput.bind(this));
     }
 
     if (exitCode) {
@@ -233,101 +318,24 @@ export class Svn {
     args: any[],
     options: ICpOptions = {}
   ): Promise<BufferResult> {
-    if (cwd) {
-      this.lastCwd = cwd;
-      options.cwd = cwd;
-    }
+    const defaults = prepareExec(
+      this.svnPath,
+      cwd,
+      args,
+      options,
+      this,
+      this.logOutput.bind(this)
+    );
 
-    if (options.log !== false) {
-      const argsOut = args.map(arg => (/ |^$/.test(arg) ? `'${arg}'` : arg));
-      this.logOutput(
-        `[${this.lastCwd.split(/[\\\/]+/).pop()}]$ svn ${argsOut.join(" ")}\n`
-      );
-    }
-
-    if (options.username) {
-      args.push("--username", options.username);
-    }
-    if (options.password) {
-      args.push("--password", options.password);
-    }
-
-    if (options.username || options.password) {
-      // Configuration format: FILE:SECTION:OPTION=[VALUE]
-      // Disable password store
-      args.push("--config-option", "config:auth:password-stores=");
-      // Disable store auth credentials
-      args.push("--config-option", "servers:global:store-auth-creds=no");
-    }
-
-    // Force non interactive environment
-    args.push("--non-interactive");
-
-    const defaults: cp.SpawnOptions = {
-      env: process.env
-    };
-    if (cwd) {
-      defaults.cwd = cwd;
-    }
-
-    defaults.env = Object.assign({}, process.env, options.env || {}, {
-      LC_ALL: "en_US.UTF-8",
-      LANG: "en_US.UTF-8"
-    });
-
-    const child = cp.spawn(this.svnPath, args, defaults);
-
-    const disposables: IDisposable[] = [];
-
-    const once = (
-      ee: NodeJS.EventEmitter,
-      name: string,
-      fn: (...args: any[]) => void
-    ) => {
-      ee.once(name, fn);
-      disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-    };
-
-    const on = (
-      ee: NodeJS.EventEmitter,
-      name: string,
-      fn: (...args: any[]) => void
-    ) => {
-      ee.on(name, fn);
-      disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-    };
-
-    const [exitCode, stdout, stderr] = await Promise.all<any>([
-      new Promise<number>((resolve, reject) => {
-        once(child, "error", reject);
-        once(child, "exit", resolve);
-      }),
-      new Promise<Buffer>(resolve => {
-        const buffers: Buffer[] = [];
-        on(child.stdout as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(child.stdout as Readable, "close", () =>
-          resolve(Buffer.concat(buffers))
-        );
-      }),
-      new Promise<string>(resolve => {
-        const buffers: Buffer[] = [];
-        on(child.stderr as Readable, "data", (b: Buffer) => buffers.push(b));
-        once(child.stderr as Readable, "close", () =>
-          resolve(Buffer.concat(buffers).toString())
-        );
-      })
-    ]);
-
-    dispose(disposables);
+    const { exitCode, stdout, stderr } = await runSvn(
+      this.svnPath,
+      args as string[],
+      defaults,
+      options
+    );
 
     if (options.log !== false && stderr.length > 0) {
-      const name = this.lastCwd.split(/[\\\/]+/).pop();
-      const err = stderr
-        .split("\n")
-        .filter((line: string) => line)
-        .map((line: string) => `[${name}]$ ${line}`)
-        .join("\n");
-      this.logOutput(err);
+      logStderr(stderr, this.lastCwd, this.logOutput.bind(this));
     }
 
     return { exitCode, stdout, stderr };

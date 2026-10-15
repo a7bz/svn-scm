@@ -22,6 +22,8 @@ export class DeleteUnversioned extends Command {
       l10n.t("No")
     );
     if (answer === yes) {
+      const failed: string[] = [];
+
       for (const uri of uris) {
         const fsPath = uri.fsPath;
 
@@ -38,8 +40,15 @@ export class DeleteUnversioned extends Command {
             await unlink(fsPath);
           }
         } catch (err) {
-          // TODO(cjohnston) Show meaningful error to user
+          console.error(err);
+          failed.push(fsPath);
         }
+      }
+
+      if (failed.length > 0) {
+        window.showErrorMessage(
+          l10n.t("Unable to delete: {0}", failed.join(", "))
+        );
       }
     }
   }

@@ -275,17 +275,19 @@ export class Repository implements IRemoteRepository {
     this.refreshRemoteChanges();
 
     // On change config, dispose current interval and create a new.
-    configuration.onDidChange(e => {
-      if (e.affectsConfiguration("svn.remoteChanges.checkFrequency")) {
-        if (this.remoteChangedUpdateInterval) {
-          clearInterval(this.remoteChangedUpdateInterval);
+    this.disposables.push(
+      configuration.onDidChange(e => {
+        if (e.affectsConfiguration("svn.remoteChanges.checkFrequency")) {
+          if (this.remoteChangedUpdateInterval) {
+            clearInterval(this.remoteChangedUpdateInterval);
+          }
+
+          this.createRemoteChangedInterval();
+
+          this.refreshRemoteChanges();
         }
-
-        this.createRemoteChangedInterval();
-
-        this.refreshRemoteChanges();
-      }
-    });
+      })
+    );
 
     // Recheck the remote repository when the window regains focus, so that
     // commits pushed by other users show up without waiting for the next

@@ -226,6 +226,10 @@ export interface ICpOptions extends SpawnOptions {
   log?: boolean;
   username?: string;
   password?: string;
+  /** Called for each chunk of stdout while the process runs. */
+  onStdout?: (chunk: Buffer) => void;
+  /** Called to abort the process, e.g. when the user cancels a progress. */
+  onCancel?: () => void;
 }
 
 export interface ISvnErrorData {

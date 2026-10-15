@@ -1,4 +1,5 @@
 import {
+  l10n,
   SourceControlResourceState,
   TextDocumentShowOptions,
   Uri,
@@ -45,9 +46,23 @@ export class OpenFile extends Command {
       const resource = arg;
 
       if (!(resource instanceof Resource)) {
-        // can happen when called from a keybinding
-        // TODO(@a7bz) fix this
-        // resource = this.getSCMResource();
+        // Can happen when the command is invoked from a keybinding or the
+        // command palette, i.e. without an explicit resource argument.
+        // Fall back to the active editor, otherwise the command silently
+        // does nothing.
+        const fallback = await this.getSCMResource();
+
+        if (fallback) {
+          return this.openUris(
+            [...resourceStates.map(r => r.resourceUri), fallback.resourceUri],
+            preserveFocus
+          );
+        }
+
+        window.showWarningMessage(
+          l10n.t("Select a file in the Source Control view first")
+        );
+        return;
       }
 
       if (resource) {
@@ -62,6 +77,10 @@ export class OpenFile extends Command {
       return;
     }
 
+    await this.openUris(uris, preserveFocus);
+  }
+
+  private async openUris(uris: Uri[], preserveFocus: boolean): Promise<void> {
     const preview = uris.length === 1 ? true : false;
     const activeTextEditor = window.activeTextEditor;
     for (const uri of uris) {

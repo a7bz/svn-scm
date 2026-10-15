@@ -41,6 +41,7 @@ export class SvnFileSystemProvider implements FileSystemProvider, Disposable {
     this._onDidChangeFile.event;
 
   private changedRepositoryRoots = new Set<string>();
+  private cleanupInterval?: NodeJS.Timer;
 
   constructor(private sourceControlManager: SourceControlManager) {
     this.disposables.push(
@@ -54,7 +55,7 @@ export class SvnFileSystemProvider implements FileSystemProvider, Disposable {
       })
     );
 
-    setInterval(() => this.cleanup(), FIVE_MINUTES);
+    this.cleanupInterval = setInterval(() => this.cleanup(), FIVE_MINUTES);
   }
 
   private onDidChangeRepository({ repository }: RepositoryChangeEvent): void {
@@ -206,6 +207,10 @@ export class SvnFileSystemProvider implements FileSystemProvider, Disposable {
   }
 
   dispose(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
     this.disposables.forEach(d => d.dispose());
   }
 }

@@ -1,8 +1,16 @@
 import { Command } from "./command";
-import { l10n, window, Uri, commands, ProgressLocation } from "vscode";
+import {
+  l10n,
+  window,
+  Uri,
+  commands,
+  ProgressLocation,
+  CancellationToken
+} from "vscode";
 import { Repository } from "../repository";
-import * as cp from "child_process";
 import { tempSvnFs } from "../temp_svn_fs";
+import { ICpOptions } from "../common/types";
+import SvnError from "../svnError";
 
 export class SearchLogByText extends Command {
   constructor() {
@@ -25,38 +33,56 @@ export class SearchLogByText extends Command {
 
     await commands.executeCommand<void>("vscode.open", uri);
 
-    const proc = cp.spawn("svn", ["log", "--search", input], {
-      cwd: repository.workspaceRoot
-    });
-
     let content = "";
 
-    proc.stdout.on("data", data => {
-      content += data.toString();
+    const options: ICpOptions = {
+      log: false,
+      onSpawn: proc => {
+        proc.stdout!.on("data", (data: Buffer) => {
+          content += data.toString();
+
+          tempSvnFs.writeFile(uri, Buffer.from(content), {
+            create: true,
+            overwrite: true
+          });
+        });
+      }
+    };
+
+    try {
+      await window.withProgress(
+        {
+          cancellable: true,
+          location: ProgressLocation.Notification,
+          title: l10n.t("Searching Log")
+        },
+        (_progress, token: CancellationToken) => {
+          token.onCancellationRequested(() => options.onCancel?.());
+
+          return repository.repository
+            .exec(["log", "--search", input], options)
+            .then(
+              result => {
+                content = result.stdout;
+              },
+              err => {
+                // `svn log --search` exits non-zero when nothing matches,
+                // which surfaces as a SvnError; keep whatever was streamed.
+                if (!(err instanceof SvnError)) {
+                  throw err;
+                }
+              }
+            );
+        }
+      );
 
       tempSvnFs.writeFile(uri, Buffer.from(content), {
         create: true,
         overwrite: true
       });
-    });
-
-    window.withProgress(
-      {
-        cancellable: true,
-        location: ProgressLocation.Notification,
-        title: l10n.t("Searching Log")
-      },
-      (_progress, token) => {
-        token.onCancellationRequested(() => {
-          proc.kill("SIGINT");
-        });
-
-        return new Promise<void>((resolve, reject) => {
-          proc.on("exit", (code: number) => {
-            code === 0 ? resolve() : reject();
-          });
-        });
-      }
-    );
+    } catch (error) {
+      console.error(error);
+      window.showErrorMessage(l10n.t("Unable to log"));
+    }
   }
 }
