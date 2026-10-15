@@ -94,7 +94,7 @@ jobs:
         shell: bash
 
       - name: Lint check
-        run: pnpm run lint --silent -- -f stylish
+        run: pnpm --silent run lint -- -f stylish
 
   artifact:
     runs-on: ubuntu-latest
