@@ -27,6 +27,7 @@ import { IsSvn18orGreater } from "./contexts/isSvn18orGreater";
 import { IsSvn17orGreater } from "./contexts/isSvn17orGreater";
 import { tempSvnFs } from "./temp_svn_fs";
 import { SvnFileSystemProvider } from "./svnFileSystemProvider";
+import { InlineBlameProvider } from "./inlineBlame";
 
 async function init(
   extensionContext: ExtensionContext,
@@ -44,7 +45,9 @@ async function init(
     extensionContext
   );
 
-  registerCommands(sourceControlManager, disposables);
+  const inlineBlame = new InlineBlameProvider(sourceControlManager);
+
+  registerCommands(sourceControlManager, disposables, inlineBlame);
 
   disposables.push(
     sourceControlManager,
@@ -58,7 +61,8 @@ async function init(
     new OpenRepositoryCount(sourceControlManager),
     new IsSvn18orGreater(info.version),
     new IsSvn19orGreater(info.version),
-    new IsSvn17orGreater(info.version)
+    new IsSvn17orGreater(info.version),
+    inlineBlame
   );
 
   outputChannel.appendLine(`Using svn "${info.version}" from "${info.path}"`);

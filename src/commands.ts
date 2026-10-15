@@ -17,6 +17,11 @@ import { ExportPatch, ExportPatchAll } from "./commands/exportPatch";
 import { FileOpen } from "./commands/fileOpen";
 import { FinishCheckout } from "./commands/finishCheckout";
 import { GetSourceControlManager } from "./commands/get_source_control_manager";
+import {
+  HideInlineBlame,
+  ShowInlineBlame,
+  ToggleInlineBlame
+} from "./commands/inlineBlame";
 import { Lock, ToggleLock, Unlock } from "./commands/lock";
 import { Log } from "./commands/log";
 import { ManageExternals, RepositoryInfo } from "./commands/repositoryInfo";
@@ -57,10 +62,12 @@ import { SearchLogByText } from "./commands/search_log_by_text";
 import { Merge } from "./commands/merge";
 import { MergeRevisions } from "./commands/mergeRevisions";
 import { OpenCandidateRepository } from "./commands/openCandidateRepository";
+import { InlineBlameProvider } from "./inlineBlame";
 
 export function registerCommands(
   sourceControlManager: SourceControlManager,
-  disposables: Disposable[]
+  disposables: Disposable[],
+  inlineBlame: InlineBlameProvider
 ) {
   disposables.push(new GetSourceControlManager(sourceControlManager));
   disposables.push(new FileOpen());
@@ -124,4 +131,7 @@ export function registerCommands(
   disposables.push(new Lock());
   disposables.push(new Unlock());
   disposables.push(new ToggleLock());
+  disposables.push(new ShowInlineBlame(inlineBlame));
+  disposables.push(new HideInlineBlame(inlineBlame));
+  disposables.push(new ToggleInlineBlame(inlineBlame));
 }

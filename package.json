@@ -537,6 +537,23 @@
         "command": "svn.toggleLock",
         "title": "%svn.command.toggleLock.title%",
         "category": "%svn.category%"
+      },
+      {
+        "command": "svn.showInlineBlame",
+        "title": "%svn.command.showInlineBlame.title%",
+        "category": "%svn.category%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "svn.hideInlineBlame",
+        "title": "%svn.command.hideInlineBlame.title%",
+        "category": "%svn.category%",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "svn.toggleInlineBlame",
+        "title": "%svn.command.toggleInlineBlame.title%",
+        "category": "%svn.category%"
       }
     ],
     "submenus": [
@@ -839,6 +856,18 @@
         {
           "command": "svn.toggleLock",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn17orGreater"
+        },
+        {
+          "command": "svn.showInlineBlame",
+          "when": "false"
+        },
+        {
+          "command": "svn.hideInlineBlame",
+          "when": "false"
+        },
+        {
+          "command": "svn.toggleInlineBlame",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
         }
       ],
       "view/title": [
@@ -1217,6 +1246,16 @@
           "command": "svn.toggleLock",
           "group": "navigation",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && isSvn17orGreater"
+        },
+        {
+          "command": "svn.showInlineBlame",
+          "group": "navigation",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && !svnInlineBlameEnabled"
+        },
+        {
+          "command": "svn.hideInlineBlame",
+          "group": "navigation",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && svnInlineBlameEnabled"
         }
       ],
       "explorer/context": [
@@ -1379,6 +1418,36 @@
           "type": "boolean",
           "description": "%svn.config.ignoreWorkingCopyIsTooOld.description%",
           "default": false
+        },
+        "svn.inlineBlame.enabled": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.enabled.description%",
+          "default": false
+        },
+        "svn.inlineBlame.showAuthor": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.showAuthor.description%",
+          "default": true
+        },
+        "svn.inlineBlame.showDate": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.showDate.description%",
+          "default": true
+        },
+        "svn.inlineBlame.showRevision": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.showRevision.description%",
+          "default": true
+        },
+        "svn.inlineBlame.compact": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.compact.description%",
+          "default": true
+        },
+        "svn.inlineBlame.dateFormat": {
+          "type": "string",
+          "description": "%svn.config.inlineBlame.dateFormat.description%",
+          "default": "YYYY-MM-DD"
         },
         "svn.layout.branchesRegex": {
           "type": [
