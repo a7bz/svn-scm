@@ -30,6 +30,8 @@ import {
   fixPegRevision,
   isDescendant,
   normalizePath,
+  splitInChunks,
+  MAX_CLI_LENGTH,
   unwrap
 } from "./util";
 import { matchAll } from "./util/globMatch";
@@ -687,8 +689,24 @@ export class Repository {
 
   public async revert(files: string[], depth: keyof typeof SvnDepth) {
     files = files.map(file => this.removeAbsolutePath(file));
-    const result = await this.exec(["revert", "--depth", depth, ...files]);
-    return result.stdout;
+
+    // Split the paths into chunks that fit within the command line limit,
+    // otherwise `svn revert` fails with `spawn ENAMETOOLONG` when a large
+    // number of files (spread across multiple directories) is reverted.
+    const chunks = splitInChunks(
+      files,
+      MAX_CLI_LENGTH,
+      file => file.length + 1
+    );
+
+    let stdout = "";
+
+    for (const chunk of chunks) {
+      const result = await this.exec(["revert", "--depth", depth, ...chunk]);
+      stdout += result.stdout;
+    }
+
+    return stdout;
   }
 
   public async update(ignoreExternals: boolean = true): Promise<string> {

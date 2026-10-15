@@ -227,4 +227,44 @@ export function pathEquals(a: string, b: string): boolean {
   return a === b;
 }
 
+// The maximum length of the command line arguments (in characters) that we
+// pass to the `svn` process. Windows limits the command line to ~32k
+// characters, so keep a safety margin below it.
+export const MAX_CLI_LENGTH = 30000;
+
+/**
+ * Split `items` into groups whose accumulated length (as reported by
+ * `getLength`) stays within `maxArgLength`. The order of the items is
+ * preserved. A single item that exceeds `maxArgLength` is always placed in its
+ * own group, so no item is ever dropped and the loop cannot stall.
+ */
+export function splitInChunks<T>(
+  items: T[],
+  maxArgLength: number,
+  getLength: (item: T) => number
+): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let currentLength = 0;
+
+  for (const item of items) {
+    const itemLength = getLength(item);
+
+    if (current.length > 0 && currentLength + itemLength > maxArgLength) {
+      chunks.push(current);
+      current = [];
+      currentLength = 0;
+    }
+
+    current.push(item);
+    currentLength += itemLength;
+  }
+
+  if (current.length > 0) {
+    chunks.push(current);
+  }
+
+  return chunks;
+}
+
 export const EmptyDisposable = toDisposable(() => null);
