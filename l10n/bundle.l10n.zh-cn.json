@@ -185,6 +185,7 @@
   "Svn repository password": "Svn 仓库密码",
   "Svn repository username": "Svn 仓库用户名",
   "Switch Branch...": "切换分支...",
+  "The blame command is disabled in the settings": "追溯功能已在设置中被禁用",
   "The file is not in a versioned working copy": "该文件不在受版本控制的工作副本中",
   "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?": "文件 \"{0}\" 已从磁盘删除。\n是否要从 SVN 中移除？",
   "The path is not in a versioned working copy": "该路径不在受版本控制的工作副本中",

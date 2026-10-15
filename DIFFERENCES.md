@@ -44,6 +44,9 @@ A batch of commands that upstream does not expose, following the existing
   `r<revision> <author> <date> | <line>`. Dates can be shown relative
   ("2 days ago") or absolute; see `svn.blame.relativeDates` (default `false`).
   Entry points: command palette, editor title bar, SCM resource context menu.
+- `svn.blame.enabled` (default `true`) — when set to `false`, the blame command
+  disappears from all menus and the command palette; invoking it directly shows
+  a "disabled in the settings" warning instead of running.
 - `svn.properties` — inspect, add, edit and delete SVN properties
   (`propget` / `proplist` / `propset` / `propdel`). Shows the properties
   already set on the target plus a list of well-known properties

@@ -21,6 +21,17 @@ export class Blame extends Command {
   }
 
   public async execute(arg?: SourceControlResourceState | Uri) {
+    // The menu entries are hidden by `svn.blame.enabled`, but the command can
+    // still be reached (keybinding, `commands.executeCommand`, ...).
+    const blameEnabled = configuration.get<boolean>("blame.enabled");
+
+    if (blameEnabled === false) {
+      window.showWarningMessage(
+        l10n.t("The blame command is disabled in the settings")
+      );
+      return;
+    }
+
     const uri = await this.getTargetUri(arg);
 
     if (!uri) {

@@ -185,6 +185,7 @@
   "Svn repository password": "Svn repository password",
   "Svn repository username": "Svn repository username",
   "Switch Branch...": "Switch Branch...",
+  "The blame command is disabled in the settings": "The blame command is disabled in the settings",
   "The file is not in a versioned working copy": "The file is not in a versioned working copy",
   "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?": "The file(s) \"{0}\" are removed from disk.\nWould you like remove from SVN?",
   "The path is not in a versioned working copy": "The path is not in a versioned working copy",

@@ -80,6 +80,7 @@
   "svn.command.lock.title": "锁定",
   "svn.command.unlock.title": "解锁",
   "svn.command.toggleLock.title": "切换锁定状态",
+  "svn.config.blame.enabled.description": "是否在菜单和命令面板中显示“追溯（Blame）”命令",
   "svn.config.blame.relativeDates.description": "在追溯视图中显示相对时间（例如“2 天前”）",
   "svn.config.autorefresh.description": "是否启用自动刷新",
   "svn.config.commit.changes.selectedAll.description": "提交更改时选中所有文件",

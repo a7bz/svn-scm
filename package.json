@@ -794,7 +794,7 @@
         },
         {
           "command": "svn.blame",
-          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && config.svn.blame.enabled"
         },
         {
           "command": "svn.properties",
@@ -1152,7 +1152,7 @@
         },
         {
           "command": "svn.blame",
-          "when": "config.svn.enabled && scmProvider == svn && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != remotechanges",
+          "when": "config.svn.enabled && scmProvider == svn && config.svn.blame.enabled && scmResourceGroup != unversioned && scmResourceGroup != external && scmResourceGroup != remotechanges",
           "group": "navigation"
         },
         {
@@ -1211,7 +1211,7 @@
         {
           "command": "svn.blame",
           "group": "navigation",
-          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file"
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && config.svn.blame.enabled && !isInDiffEditor && resourceScheme == file"
         },
         {
           "command": "svn.toggleLock",
@@ -1253,6 +1253,11 @@
         "svn.autorefresh": {
           "type": "boolean",
           "description": "%svn.config.autorefresh.description%",
+          "default": true
+        },
+        "svn.blame.enabled": {
+          "type": "boolean",
+          "description": "%svn.config.blame.enabled.description%",
           "default": true
         },
         "svn.blame.relativeDates": {
