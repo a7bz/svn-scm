@@ -34,6 +34,40 @@ This document lists all changes made in this fork compared to the original
   compatible with Node 17+ OpenSSL legacy provider.
 - New `scripts/smoke.cjs` smoke test script.
 
+### 4. Commonly used SVN commands
+A batch of commands that upstream does not expose, following the existing
+`repository` → `Command` layering (each new repository method is wrapped in
+`run(Operation, ...)` so it shows in the operation log and status bar).
+
+- `svn.blame` — "Blame (Annotate)". Runs `svn blame --xml` and renders a
+  read-only temporary document where each line is prefixed with
+  `r<revision> <author> <date> | <line>`. Dates can be shown relative
+  ("2 days ago") or absolute; see `svn.blame.relativeDates` (default `false`).
+  Entry points: command palette, editor title bar, SCM resource context menu.
+- `svn.properties` — inspect, add, edit and delete SVN properties
+  (`propget` / `proplist` / `propset` / `propdel`). Shows the properties
+  already set on the target plus a list of well-known properties
+  (`svn:ignore`, `svn:externals`, `svn:eol-style`, ...) that are not set yet.
+- `svn.createBranchTag` — create a branch or tag with `svn copy`. The
+  destination is resolved against the repository root, so entering
+  `branches/my-branch` copies to `<repoRoot>/branches/my-branch`; a commit
+  message is prompted for.
+- `svn.addAndCommit` / `svn.addAndCommitExplorer` — version the selected
+  unversioned files and commit them in one step. The Explorer variant
+  receives `(mainUri, allUris)` and groups the files per repository.
+- `svn.exportPatch` / `svn.exportPatchAll` — write `svn diff` output to a
+  `.patch` file on disk via a Save dialog (default name
+  `<file>-<timestamp>.patch` inside the workspace root).
+- `svn.repositoryInfo` — show a read-only overview of the repository
+  (root, URL, revision, UUID, last changed author/revision/date, working
+  copy root, local path and current branch) in a temporary document.
+- `svn.manageExternals` — view, add, edit, pin and remove
+  `svn:externals` definitions of the working copy root.
+- `svn.lock` / `svn.unlock` / `svn.toggleLock` — file locking
+  (`svn lock` / `svn unlock`), with an optional lock message and a
+  one-click toggle from the editor title bar. Menu entries are gated by
+  the new `isSvn17orGreater` context key (locking requires svn >= 1.7).
+
 ## Fixed Bugs
 
 ### 1. "Missing dependency" error after packaging/installing
