@@ -22,7 +22,8 @@ export async function mergeBranch(
       branchPath,
       reintegrate,
       "postpone",
-      revisions
+      revisions,
+      dryRun
     );
     await reportMergeResult(repository, branchPath, output, dryRun, options);
     return output;

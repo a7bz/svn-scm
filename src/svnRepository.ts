@@ -671,7 +671,8 @@ export class Repository {
     ref: string,
     reintegrate: boolean = false,
     accept_action: string = "postpone",
-    revisions: string[] = []
+    revisions: string[] = [],
+    dryRun: boolean = false
   ): Promise<string> {
     const repoUrl = await this.getRepoUrl();
     const branchUrl = repoUrl + "/" + ref;
@@ -679,6 +680,9 @@ export class Repository {
     let args = ["merge", "--accept", accept_action];
     args = args.concat(reintegrate ? ["--reintegrate"] : []);
     args = args.concat(revisions);
+    if (dryRun) {
+      args = args.concat(["--dry-run"]);
+    }
     args = args.concat([branchUrl]);
 
     const result = await this.exec(args);

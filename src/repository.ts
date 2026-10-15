@@ -867,14 +867,16 @@ export class Repository implements IRemoteRepository {
     name: string,
     reintegrate: boolean = false,
     accept_action: string = "postpone",
-    revisions: string[] = []
+    revisions: string[] = [],
+    dryRun: boolean = false
   ): Promise<string> {
     return this.run<string>(Operation.Merge, async () => {
       const output = await this.repository.merge(
         name,
         reintegrate,
         accept_action,
-        revisions
+        revisions,
+        dryRun
       );
       this.updateRemoteChangedFiles();
       return output;
