@@ -68,7 +68,6 @@ export interface BufferResult {
  * (credentials, non-interactive flag) and the spawn options.
  */
 function prepareExec(
-  svnPath: string,
   cwd: string,
   args: any[],
   options: ICpOptions,
@@ -156,20 +155,26 @@ function runSvn(
     disposables.push(toDisposable(() => ee.removeListener(name, fn)));
   };
 
-  if (options.onCancel) {
-    const cancel = options.onCancel;
-    options.onCancel = undefined;
-    disposables.push(
-      toDisposable(() => {
-        try {
-          child.kill();
-        } catch {
-          // Process already gone.
-        }
-        cancel();
-      })
-    );
-  }
+  // Always expose a cancellation hook: callers abort by invoking
+  // `options.onCancel()`. Installing it unconditionally (rather than only when
+  // the caller supplied one) means `svn log --search` and friends can kill the
+  // process even though they never passed their own hook.
+  const callerCancel = options.onCancel;
+  options.onCancel = () => {
+    try {
+      child.kill();
+    } catch {
+      // Process already gone.
+    }
+    callerCancel?.();
+  };
+
+  // Do not leak the (now stale) hook once the process has completed.
+  disposables.push(
+    toDisposable(() => {
+      options.onCancel = undefined;
+    })
+  );
 
   const result = Promise.all<any>([
     new Promise<number>((resolve, reject) => {
@@ -229,7 +234,11 @@ export class Svn {
   public version: string;
 
   private svnPath: string;
-  private lastCwd: string = "";
+  private lastCwdRef: { value: string } = { value: "" };
+
+  private get lastCwd(): string {
+    return this.lastCwdRef.value;
+  }
 
   private _onOutput = new EventEmitter();
   get onOutput(): EventEmitter {
@@ -251,11 +260,10 @@ export class Svn {
     options: ICpOptions = {}
   ): Promise<IExecutionResult> {
     const defaults = prepareExec(
-      this.svnPath,
       cwd,
       args,
       options,
-      this,
+      this.lastCwdRef,
       this.logOutput.bind(this)
     );
 
@@ -319,11 +327,10 @@ export class Svn {
     options: ICpOptions = {}
   ): Promise<BufferResult> {
     const defaults = prepareExec(
-      this.svnPath,
       cwd,
       args,
       options,
-      this,
+      this.lastCwdRef,
       this.logOutput.bind(this)
     );
 

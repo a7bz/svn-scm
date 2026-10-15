@@ -17,7 +17,7 @@ export class RepositoryInfo extends Command {
     try {
       const info = await repository.getInfo(repository.workspaceRoot);
 
-      const groups = [
+      const groups: Array<[string, string | undefined]> = [
         ["Repository root", info.repository ? info.repository.root : ""],
         ["URL", info.url],
         ["Revision", info.revision],
@@ -79,7 +79,12 @@ export class ManageExternals extends Command {
       return;
     }
 
-    const picks = externals.map(e => ({
+    const picks: Array<{
+      label: string;
+      description: string;
+      detail: string;
+      external?: { url: string; path: string; revision?: string };
+    }> = externals.map(e => ({
       label: e.path,
       description: e.url,
       detail: e.revision ? l10n.t("Pinned to revision {0}", e.revision) : "",

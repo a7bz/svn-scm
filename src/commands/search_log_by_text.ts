@@ -37,14 +37,12 @@ export class SearchLogByText extends Command {
 
     const options: ICpOptions = {
       log: false,
-      onSpawn: proc => {
-        proc.stdout!.on("data", (data: Buffer) => {
-          content += data.toString();
+      onStdout: (data: Buffer) => {
+        content += data.toString();
 
-          tempSvnFs.writeFile(uri, Buffer.from(content), {
-            create: true,
-            overwrite: true
-          });
+        tempSvnFs.writeFile(uri, Buffer.from(content), {
+          create: true,
+          overwrite: true
         });
       }
     };
