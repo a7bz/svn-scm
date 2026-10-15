@@ -75,7 +75,17 @@ This document lists all changes made in this fork compared to the original
   `SvnProvider` and disposed with their listeners, and the node also reacts to
   incoming-change updates.
 
-### 6. Misc small fixes
+### 6. Revert fails when many files across multiple subdirectories changed
+- Reverting a large changeset (e.g. files modified in many subdirectories) built
+  a single `svn revert` command line containing every path. On Windows this
+  exceeded the ~32k-character command line limit and failed with
+  `spawn ENAMETOOLONG`, surfaced to the user as "Unable to revert".
+- `svnRepository.revert()` now splits the paths into chunks of at most
+  `MAX_CLI_LENGTH` (30000) characters via the new `splitInChunks` helper in
+  `util.ts` and runs one `svn revert --depth <depth>` per chunk, preserving the
+  original path order and concatenating the output.
+
+### 7. Misc small fixes
 - `svn.resolveAll` used `resourceUri.path` (POSIX) instead of `fsPath` and
   continued iterating after reporting "No Conflicts".
 - `svn.changelist` compared against `resourceUri.path` instead of `fsPath`.
