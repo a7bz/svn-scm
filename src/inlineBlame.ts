@@ -1,80 +1,99 @@
-import {
-  DecorationOptions,
-  DecorationRangeBehavior,
-  Disposable,
-  MarkdownString,
-  TextEditor,
-  TextEditorDecorationType,
-  ThemeColor,
-  window,
-  workspace
-} from "vscode";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import { ISvnBlameLine } from "./common/types";
-import { debounce } from "./decorators";
+import { Disposable, window, workspace } from "vscode";
+
+import { Blamer } from "./blame/blamer";
+import { debounce } from "./blame/debounce";
+import { DecorationManager } from "./blame/decorationManager";
+import { clearIndicatorUriCache } from "./blame/indicatorUris";
+import { Storage } from "./blame/storage";
+import { DecorationRecord } from "./blame/types";
 import { configuration } from "./helpers/configuration";
 import { SourceControlManager } from "./source_control_manager";
 import { IDisposable, setVscodeContext } from "./util";
-
-dayjs.extend(relativeTime);
 
 /** Context key used to switch the editor-title toggle between its two states. */
 export const INLINE_BLAME_CONTEXT = "svnInlineBlameEnabled";
 
 /**
- * Renders per-line blame information (author / date / revision) at the end of
- * each line of the active editor, similar to the "SVN Blamer" extension.
+ * Facade that wires the blame engine (ported from the "SVN Blamer" extension)
+ * into this extension's lifecycle and the `svn.inlineBlame.enabled` switch.
  *
- * The feature is off by default and toggled through
- * `svn.inlineBlame.enabled` (see the `svn.showInlineBlame` /
- * `svn.hideInlineBlame` commands in the editor title bar).
+ * Visual behaviour matches SVN Blamer: colour-coded gutter indicators per
+ * revision, the author/relative-time annotation on the active line, and full
+ * commit details (including the log message) on hover.
  */
 export class InlineBlameProvider implements IDisposable {
   private disposables: Disposable[] = [];
-  private decorationType: TextEditorDecorationType;
+  private blamer: Blamer;
+  private storage: Storage<DecorationRecord>;
+  private lastEnabled: boolean;
 
-  /**
-   * Blame results keyed by `uri.toString()`. Cleared whenever the working copy
-   * status changes, so commits/updates are picked up.
-   */
-  private blameCache = new Map<string, ISvnBlameLine[]>();
-
-  constructor(private sourceControlManager: SourceControlManager) {
-    this.decorationType = window.createTextEditorDecorationType({
-      after: {
-        margin: "0 0 0 2em",
-        color: new ThemeColor("editorCodeLens.foreground")
-      },
-      rangeBehavior: DecorationRangeBehavior.ClosedClosed
-    });
+  constructor(sourceControlManager: SourceControlManager) {
+    this.storage = new Storage<DecorationRecord>();
+    this.blamer = new Blamer(
+      sourceControlManager,
+      this.storage,
+      new DecorationManager()
+    );
+    // Assume disabled so the first `applyEnabledState` actually applies the
+    // persisted setting (blaming the already-open file when it is on).
+    this.lastEnabled = false;
 
     this.disposables.push(
-      this.decorationType,
-      window.onDidChangeActiveTextEditor(() => this.scheduleUpdate()),
-      workspace.onDidChangeTextDocument(e => {
-        if (e.document === window.activeTextEditor?.document) {
-          this.scheduleUpdate();
+      window.onDidChangeActiveTextEditor(textEditor => {
+        if (!this.enabled) {
+          return;
         }
+        void this.blamer.autoBlame(textEditor);
+      }),
+      window.onDidChangeTextEditorSelection(
+        debounce(event => {
+          if (!this.enabled) {
+            return;
+          }
+          void this.blamer.trackLine(event);
+        })
+      ),
+      window.onDidChangeTextEditorVisibleRanges(
+        debounce(event => this.blamer.handleVisibleRangesChange(event), 50)
+      ),
+      workspace.onDidChangeTextDocument(event =>
+        this.blamer.handleDocumentChange(event)
+      ),
+      workspace.onDidCloseTextDocument(textDocument =>
+        this.blamer.handleClosedDocument(textDocument)
+      ),
+      window.onDidChangeActiveColorTheme(() => {
+        clearIndicatorUriCache();
+        void this.blamer.refreshThemeAwareVisibleBlameIndicators();
       }),
       configuration.onDidChange(e => {
-        if (e.affectsConfiguration("svn.inlineBlame")) {
-          this.refreshContextKey();
-          this.scheduleUpdate();
+        if (!e.affectsConfiguration("svn.inlineBlame")) {
+          return;
         }
-      }),
-      sourceControlManager.onDidChangeRepository(() => {
-        this.blameCache.clear();
-        this.scheduleUpdate();
-      }),
-      sourceControlManager.onDidChangeStatusRepository(() => {
-        this.blameCache.clear();
-        this.scheduleUpdate();
+
+        if (
+          e.affectsConfiguration("svn.inlineBlame.indicatorColorScheme") ||
+          e.affectsConfiguration(
+            "svn.inlineBlame.indicatorCustomOldestColor"
+          ) ||
+          e.affectsConfiguration(
+            "svn.inlineBlame.indicatorCustomNewestColor"
+          ) ||
+          e.affectsConfiguration("svn.inlineBlame.indicatorCustomOutlineColor")
+        ) {
+          clearIndicatorUriCache();
+          void this.blamer.refreshVisibleBlameIndicators();
+        }
+
+        this.refreshContextKey();
+        void this.applyEnabledState();
       })
     );
 
     this.refreshContextKey();
-    this.scheduleUpdate();
+
+    // Blame the file that is already open when the setting is persisted as on.
+    void this.applyEnabledState();
   }
 
   /** Whether inline blame is currently enabled in the settings. */
@@ -87,155 +106,49 @@ export class InlineBlameProvider implements IDisposable {
     setVscodeContext(INLINE_BLAME_CONTEXT, this.enabled);
   }
 
-  private async update(): Promise<void> {
-    const editor = window.activeTextEditor;
-
-    if (!editor) {
+  /**
+   * Show blame for the active editor. Idempotent unless `force` is set, so the
+   * title-bar command (which flips the setting *and* calls this) does not run
+   * `svn blame` twice.
+   */
+  public async show(force?: boolean): Promise<void> {
+    if (!force && this.lastEnabled) {
       return;
     }
 
-    if (!this.enabled) {
-      this.clearDecorations(editor);
-      return;
-    }
-
-    const uri = editor.document.uri;
-
-    if (uri.scheme !== "file") {
-      this.clearDecorations(editor);
-      return;
-    }
-
-    // Blame is based on committed revisions, so unsaved edits would shift the
-    // line numbers and make the annotation misleading.
-    if (editor.document.isDirty) {
-      this.clearDecorations(editor);
-      return;
-    }
-
-    const repository = this.sourceControlManager.getRepository(uri);
-
-    if (!repository) {
-      this.clearDecorations(editor);
-      return;
-    }
-
-    const key = uri.toString();
-    let blame = this.blameCache.get(key);
-
-    if (!blame) {
-      try {
-        blame = await repository.blame(uri.fsPath);
-      } catch {
-        // Unversioned / not a working copy — nothing to annotate.
-        this.clearDecorations(editor);
-        return;
-      }
-
-      this.blameCache.set(key, blame);
-    }
-
-    // The user may have switched editors (or disabled the feature) while the
-    // blame request was in flight.
-    if (window.activeTextEditor !== editor || !this.enabled) {
-      return;
-    }
-
-    this.setDecorations(editor, blame);
+    this.lastEnabled = true;
+    await this.blamer.showBlameForActiveTextEditor(force);
   }
 
-  private setDecorations(editor: TextEditor, blame: ISvnBlameLine[]): void {
-    if (blame.length === 0) {
-      this.clearDecorations(editor);
+  /** Clear blame from every visible editor. Idempotent. */
+  public async hide(): Promise<void> {
+    if (!this.lastEnabled) {
       return;
     }
 
-    const showAuthor =
-      configuration.get<boolean>("inlineBlame.showAuthor") !== false;
-    const showDate =
-      configuration.get<boolean>("inlineBlame.showDate") !== false;
-    const showRevision =
-      configuration.get<boolean>("inlineBlame.showRevision") !== false;
-    const compact = configuration.get<boolean>("inlineBlame.compact") !== false;
-    const dateFormat = configuration.get<string>(
-      "inlineBlame.dateFormat",
-      "YYYY-MM-DD"
-    );
-
-    const lineCount = editor.document.lineCount;
-    const decorations: DecorationOptions[] = [];
-
-    let lastRevision: string | undefined;
-
-    for (const entry of blame) {
-      const lineIndex = entry.lineNumber - 1;
-
-      if (lineIndex < 0 || lineIndex >= lineCount) {
-        continue;
-      }
-
-      // With `compact` only the first line of a block of lines sharing the
-      // same revision is annotated, which keeps the view readable.
-      if (compact && lastRevision === entry.revision) {
-        continue;
-      }
-      lastRevision = entry.revision;
-
-      const parts: string[] = [];
-
-      if (showAuthor && entry.author) {
-        parts.push(entry.author);
-      }
-      if (showDate && entry.date) {
-        parts.push(dayjs(entry.date).format(dateFormat));
-      }
-      if (showRevision && entry.revision) {
-        parts.push(`r${entry.revision}`);
-      }
-
-      if (parts.length === 0) {
-        continue;
-      }
-
-      const hover = new MarkdownString();
-      hover.appendMarkdown(`**r${entry.revision}**`);
-      if (entry.author) {
-        hover.appendMarkdown(` · ${entry.author}`);
-      }
-      if (entry.date) {
-        hover.appendMarkdown(` · ${dayjs(entry.date).format(dateFormat)}`);
-      }
-
-      decorations.push({
-        range: editor.document.lineAt(lineIndex).range,
-        renderOptions: {
-          after: {
-            contentText: "  " + parts.join(", ")
-          }
-        },
-        hoverMessage: hover
-      });
+    this.lastEnabled = false;
+    for (const editor of window.visibleTextEditors) {
+      await this.blamer.clearBlameForFile(editor.document.fileName);
     }
-
-    editor.setDecorations(this.decorationType, decorations);
   }
 
-  private clearDecorations(editor: TextEditor): void {
-    editor.setDecorations(this.decorationType, []);
-  }
-
-  @debounce(250)
-  private scheduleUpdate(): void {
-    void this.update();
+  /**
+   * Reflect the `svn.inlineBlame.enabled` switch: when turned on, blame the
+   * active file; when turned off, remove every annotation. Only reacts to an
+   * actual change so unrelated settings do not trigger another `svn blame`.
+   */
+  private async applyEnabledState(): Promise<void> {
+    if (this.enabled) {
+      await this.show();
+    } else {
+      await this.hide();
+    }
   }
 
   public dispose(): void {
-    for (const editor of window.visibleTextEditors) {
-      this.clearDecorations(editor);
-    }
     this.disposables.forEach(d => d.dispose());
     this.disposables = [];
-    this.blameCache.clear();
+    this.blamer.dispose();
     setVscodeContext(INLINE_BLAME_CONTEXT, undefined);
   }
 }

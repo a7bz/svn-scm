@@ -1,4 +1,4 @@
-import { commands, ConfigurationTarget, l10n, window } from "vscode";
+import { commands, ConfigurationTarget } from "vscode";
 import { configuration } from "../helpers/configuration";
 import { InlineBlameProvider } from "../inlineBlame";
 import { Command } from "./command";
@@ -19,7 +19,7 @@ export class ShowInlineBlame extends Command {
       ConfigurationTarget.Global
     );
     this.provider.refreshContextKey();
-    window.showInformationMessage(l10n.t("Inline blame enabled"));
+    await this.provider.show();
   }
 }
 
@@ -36,7 +36,7 @@ export class HideInlineBlame extends Command {
       ConfigurationTarget.Global
     );
     this.provider.refreshContextKey();
-    window.showInformationMessage(l10n.t("Inline blame disabled"));
+    await this.provider.hide();
   }
 }
 
@@ -52,5 +52,16 @@ export class ToggleInlineBlame extends Command {
     } else {
       await commands.executeCommand("svn.showInlineBlame");
     }
+  }
+}
+
+/** Force-blame the active file, allowing binary files SVN would skip. */
+export class ForceInlineBlame extends Command {
+  constructor(private provider: InlineBlameProvider) {
+    super("svn.forceInlineBlame");
+  }
+
+  public async execute() {
+    await this.provider.show(true);
   }
 }

@@ -1,0 +1,234 @@
+/**
+ * Indicator colour helpers for the inline blame decorations.
+ *
+ * Adapted from the "SVN Blamer" extension (blamer-vs) by BeauAgst, MIT licensed:
+ * https://github.com/BeauAgst/blamer-vs
+ */
+
+export const INDICATOR_COLOR_SCHEMES = [
+  "random",
+  "redToGreen",
+  "blue",
+  "teal",
+  "violet",
+  "vermilion",
+  "custom"
+] as const;
+export const INDICATOR_COLOR_PALETTES = [
+  "blue",
+  "teal",
+  "violet",
+  "vermilion"
+] as const;
+
+export type IndicatorColorScheme = (typeof INDICATOR_COLOR_SCHEMES)[number];
+export type IndicatorColorPalette = (typeof INDICATOR_COLOR_PALETTES)[number];
+export type ChronologicalColorScheme = Exclude<IndicatorColorScheme, "random">;
+export type ThemeAwareIndicatorColorScheme = IndicatorColorPalette;
+
+export type IndicatorGradient = Readonly<{
+  oldest: string;
+  newest: string;
+}>;
+
+export const DEFAULT_CUSTOM_INDICATOR_GRADIENT: IndicatorGradient = {
+  oldest: "#6b7280",
+  newest: "#1f5f9f"
+};
+
+export const getIndicatorColorScheme = (value: unknown): IndicatorColorScheme =>
+  INDICATOR_COLOR_SCHEMES.includes(value as IndicatorColorScheme)
+    ? (value as IndicatorColorScheme)
+    : "random";
+
+export const isThemeAwareIndicatorColorScheme = (
+  scheme: IndicatorColorScheme
+): scheme is ThemeAwareIndicatorColorScheme =>
+  INDICATOR_COLOR_PALETTES.includes(scheme as IndicatorColorPalette);
+
+const isHexColour = (value: unknown): value is string =>
+  typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+
+const getHexColourOrDefault = (value: unknown, defaultValue: string): string =>
+  isHexColour(value) ? value.toLowerCase() : defaultValue;
+
+export const getCustomIndicatorGradient = (
+  oldest: unknown,
+  newest: unknown
+): IndicatorGradient => ({
+  oldest: getHexColourOrDefault(
+    oldest,
+    DEFAULT_CUSTOM_INDICATOR_GRADIENT.oldest
+  ),
+  newest: getHexColourOrDefault(
+    newest,
+    DEFAULT_CUSTOM_INDICATOR_GRADIENT.newest
+  )
+});
+
+export const getCustomIndicatorOutline = (value: unknown): string | undefined =>
+  isHexColour(value) ? value.toLowerCase() : undefined;
+
+const hashString = (value: string): number => {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+};
+
+const createSeededShuffle = <T>(items: readonly T[], seed: number): T[] => {
+  const shuffled = [...items];
+  let state = seed || 1;
+
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = next() % (index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index]
+    ];
+  }
+
+  return shuffled;
+};
+
+export const sortRevisions = (revisions: readonly string[]): string[] =>
+  [...new Set(revisions)].sort((left, right) => {
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+    const bothNumeric = !Number.isNaN(leftNumber) && !Number.isNaN(rightNumber);
+
+    if (bothNumeric && leftNumber !== rightNumber) {
+      return leftNumber < rightNumber ? -1 : 1;
+    }
+
+    return left.localeCompare(right, undefined, { numeric: true });
+  });
+
+export const createChronologicalIconMapFromFactory = <T>(
+  revisions: readonly string[],
+  iconCount: number,
+  getIcon: (index: number) => T | undefined
+): Record<string, T | undefined> => {
+  const sortedRevisions = sortRevisions(revisions);
+  const icons: Record<string, T | undefined> = {};
+
+  if (sortedRevisions.length === 0 || iconCount === 0) {
+    return icons;
+  }
+
+  if (sortedRevisions.length === 1) {
+    icons[sortedRevisions[0]] = getIcon(iconCount - 1);
+    return icons;
+  }
+
+  for (const [index, revision] of sortedRevisions.entries()) {
+    const iconIndex = Math.round(
+      (index * (iconCount - 1)) / (sortedRevisions.length - 1)
+    );
+    icons[revision] = getIcon(iconIndex);
+  }
+
+  return icons;
+};
+
+function* createIntermediateIndexes(count: number): Generator<number> {
+  if (count < 3) {
+    return;
+  }
+
+  const ranges: Array<[number, number]> = [[0, count - 1]];
+
+  while (ranges.length > 0) {
+    const [start, end] = ranges.shift()!;
+    const middle = Math.floor((start + end) / 2);
+
+    if (middle === start || middle === end) {
+      continue;
+    }
+
+    yield middle;
+    ranges.push([start, middle], [middle, end]);
+  }
+}
+
+export const createRandomIconOrderFromFactory = <T>(
+  fileName: string,
+  iconCount: number,
+  requiredIconCount: number,
+  getIcon: (palette: IndicatorColorPalette, index: number) => T | undefined
+): T[] => {
+  const palettes = createSeededShuffle(
+    INDICATOR_COLOR_PALETTES,
+    hashString(fileName)
+  );
+
+  if (
+    !Number.isFinite(iconCount) ||
+    iconCount === 0 ||
+    requiredIconCount <= 0
+  ) {
+    return [];
+  }
+
+  const order: T[] = [];
+  const add = (palette: IndicatorColorPalette, index: number) => {
+    if (order.length >= requiredIconCount) {
+      return;
+    }
+
+    const icon = getIcon(palette, index);
+    if (icon) {
+      order.push(icon);
+    }
+  };
+
+  for (const [index, palette] of palettes.entries()) {
+    add(palette, index % 2 === 0 ? iconCount - 1 : 0);
+    if (order.length >= requiredIconCount) {
+      return order;
+    }
+  }
+
+  for (const [index, palette] of palettes.entries()) {
+    add(palette, index % 2 === 0 ? 0 : iconCount - 1);
+    if (order.length >= requiredIconCount) {
+      return order;
+    }
+  }
+
+  for (const iconIndex of createIntermediateIndexes(iconCount)) {
+    for (const palette of palettes) {
+      add(palette, iconIndex);
+      if (order.length >= requiredIconCount) {
+        return order;
+      }
+    }
+  }
+
+  return order;
+};
+
+export const createRandomIconMapFromItems = <T>(
+  revisions: readonly string[],
+  iconsInOrder: readonly T[]
+): Record<string, T | undefined> => {
+  const icons: Record<string, T | undefined> = {};
+  const sortedRevisions = sortRevisions(revisions);
+
+  for (const [index, revision] of sortedRevisions.entries()) {
+    icons[revision] = iconsInOrder[index % iconsInOrder.length];
+  }
+
+  return icons;
+};

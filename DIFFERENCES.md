@@ -72,25 +72,48 @@ A batch of commands that upstream does not expose, following the existing
   the new `isSvn17orGreater` context key (locking requires svn >= 1.7).
 
 ### 5. Inline blame with an editor-title toggle
-Renders per-line blame information at the end of each line of the active
-editor, similar to the "SVN Blamer" extension, and adds a one-click toggle
-in the editor title bar (top-right) whenever a file is open.
+A 1:1 port of the visual effect of the
+["SVN Blamer" / `blamer-vs`](https://github.com/BeauAgst/blamer-vs) extension
+(MIT licensed), reusing this extension's own SVN channel and authentication
+instead of a private SVN wrapper:
 
-- `svn.inlineBlame.enabled` (default `false`) — master switch for the inline
-  annotations. `svn.showInlineBlame` / `svn.hideInlineBlame` (editor title bar)
-  and `svn.toggleInlineBlame` (command palette) flip it. The title-bar button
-  swaps between the `$(eye-closed)` and `$(eye)` icons through the new
-  `svnInlineBlameEnabled` context key.
-- `svn.inlineBlame.showAuthor` (default `true`), `svn.inlineBlame.showDate`
-  (default `true`), `svn.inlineBlame.showRevision` (default `true`) — control
-  which fields are shown in the annotation.
-- `svn.inlineBlame.compact` (default `true`) — only annotate the first line of
-  each block of consecutive lines that share the same revision.
-- `svn.inlineBlame.dateFormat` (default `"YYYY-MM-DD"`) — `dayjs` format used
-  for the commit date.
-- Annotations are cached per file and invalidated when the working copy status
-  changes; they are hidden while the document has unsaved changes so the line
-  numbers always match the committed revision.
+- Colour-coded **revision indicators** in the gutter, one per revision block.
+- The `r<revision>: <author>, <relative time>` annotation at the end of the
+  **current line** only, following the cursor.
+- A hover tooltip with the author, relative and absolute commit date, the
+  revision and (optionally) the commit log message.
+
+Commands and behaviour:
+
+- `svn.inlineBlame.enabled` (default `false`) — master switch. When on, blame is
+  applied automatically as files are opened. `svn.showInlineBlame` /
+  `svn.hideInlineBlame` (editor title bar, `Ctrl+Alt+D`) and
+  `svn.toggleInlineBlame` (command palette, `Ctrl+Alt+E`) flip it. The title-bar
+  button swaps between the `$(eye-closed)` and `$(eye)` icons through the
+  `svnInlineBlameEnabled` context key. Toggling does not show a notification.
+- `svn.forceInlineBlame` — re-run blame with `--force` for files SVN would
+  otherwise skip (e.g. binary files).
+
+Settings ported from SVN Blamer:
+
+- `svn.inlineBlame.enableVisualIndicators` (default `true`) — show the gutter
+  indicators.
+- `svn.inlineBlame.indicatorColorScheme` (default `"random"`) — one of
+  `random`, `redToGreen`, `blue`, `teal`, `violet`, `vermilion`, `custom`.
+- `svn.inlineBlame.indicatorCustomOldestColor` / `indicatorCustomNewestColor` /
+  `indicatorCustomOutlineColor` — colours for the `custom` scheme.
+- `svn.inlineBlame.enableLogs` (default `true`) — fetch and show the commit log
+  message in the hover; disabling speeds up blame considerably.
+- `svn.inlineBlame.forceBlame` (default `false`) — pass `--force` to
+  `svn blame`.
+- `svn.inlineBlame.viewportBuffer` (default `200`) — extra lines of blame loaded
+  above and below the visible area.
+
+Blame runs with `-x "-w --ignore-eol-style"` so whitespace/EOL-only changes are
+ignored, matching SVN Blamer. Decorations are cached per file, shifted as the
+document is edited, refreshed when the indicator scheme or the colour theme
+changes, and hidden while the document has unsaved changes so line numbers
+always match the committed revision.
 
 ## Fixed Bugs
 

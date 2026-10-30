@@ -83,12 +83,25 @@ This fork ships two built-in blame features, so no extra extension is needed:
 - **Blame (Annotate)** — `SVN: Blame (Annotate)` opens a read-only document with
   every line prefixed by `r<revision> <author> <date> | <line>`. It can be
   hidden with `svn.blame.enabled`.
-- **Inline blame** — `svn.inlineBlame.enabled` (default `false`) shows the
-  author, date and revision at the end of each line, similar to
-  [blamer-vs](https://marketplace.visualstudio.com/items?itemName=beaugust.blamer-vs).
-  A one-click toggle is added to the editor title bar (top-right) whenever a
-  file is open: `$(eye-closed)` shows inline blame, `$(eye)` hides it.
-  `svn.toggleInlineBlame` in the command palette does the same.
+- **Inline blame** — `svn.inlineBlame.enabled` (default `false`) ports the
+  full visual effect of
+  [SVN Blamer / blamer-vs](https://github.com/BeauAgst/blamer-vs):
+  colour-coded revision indicators in the gutter, the
+  `r<revision>: <author>, <relative time>` annotation on the **current line**,
+  and a hover tooltip with the author, both relative and absolute commit date,
+  the revision and the commit log message.
+  - The gutter indicators can be coloured with several schemes
+    (`svn.inlineBlame.indicatorColorScheme`): `random`, `redToGreen`, `blue`,
+    `teal`, `violet`, `vermilion` or a `custom` gradient.
+  - `svn.inlineBlame.enableLogs` (default `true`) toggles the log fetch in the
+    hover; disabling it speeds up blame.
+  - `svn.inlineBlame.forceBlame` (default `false`) adds `--force` so SVN can
+    blame files it would otherwise skip (e.g. binary files).
+  - A one-click toggle is added to the editor title bar (top-right) whenever a
+    file is open: `$(eye-closed)` shows inline blame, `$(eye)` hides it.
+    `svn.showInlineBlame` is bound to `Ctrl+Alt+D`, and `svn.toggleInlineBlame`
+    (command palette) to `Ctrl+Alt+E`. `svn.forceInlineBlame` re-runs blame with
+    `--force`.
 
 ## Settings
 Here are all of the extension settings with their default values. To change any of these, add the relevant Config key and value to your VSCode settings.json file. Alternatively search for the config key in the settings UI to change its value.
@@ -159,23 +172,32 @@ Here are all of the extension settings with their default values. To change any 
   // Ignores the warning when working copy is too old
   "svn.ignoreWorkingCopyIsTooOld": null,
 
-  // Show the author, date and revision at the end of each line in the editor (inline blame). Can be toggled from the editor title bar.
+  // Show the author, relative commit time and revision at the end of the current line, with colour-coded revision indicators in the gutter (inline blame, like SVN Blamer). Can be toggled from the editor title bar.
   "svn.inlineBlame.enabled": false,
 
-  // Show the author in the inline blame annotation
-  "svn.inlineBlame.showAuthor": true,
+  // Fetch and show the revision log message in the hover tooltip. Disabling this significantly speeds up blame.
+  "svn.inlineBlame.enableLogs": true,
 
-  // Show the commit date in the inline blame annotation
-  "svn.inlineBlame.showDate": true,
+  // Use SVN's --force option when blaming files. Useful for files SVN would otherwise skip, such as binary files.
+  "svn.inlineBlame.forceBlame": false,
 
-  // Show the revision number in the inline blame annotation
-  "svn.inlineBlame.showRevision": true,
+  // Show the colour-coded revision indicators to the left of the line numbers.
+  "svn.inlineBlame.enableVisualIndicators": true,
 
-  // Only annotate the first line of each block of lines that share the same revision
-  "svn.inlineBlame.compact": true,
+  // Colour assignment for the revision indicators. Random preserves the mixed-colour behaviour; the other schemes map revisions from oldest to newest.
+  "svn.inlineBlame.indicatorColorScheme": "random",
 
-  // dayjs format used for the commit date in the inline blame annotation
-  "svn.inlineBlame.dateFormat": "YYYY-MM-DD",
+  // Used only with the Custom gradient scheme. Opaque #RRGGBB colour for the oldest commit.
+  "svn.inlineBlame.indicatorCustomOldestColor": "#6b7280",
+
+  // Used only with the Custom gradient scheme. Opaque #RRGGBB colour for the newest commit.
+  "svn.inlineBlame.indicatorCustomNewestColor": "#1f5f9f",
+
+  // Used only with the Custom gradient scheme. Optional opaque #RRGGBB outline for each indicator. Leave blank for no outline.
+  "svn.inlineBlame.indicatorCustomOutlineColor": "",
+
+  // How many extra lines of blame to load above and below the visible area. Increase this if indicators disappear while scrolling fast.
+  "svn.inlineBlame.viewportBuffer": 200,
 
   // Regex to detect path for 'branches' in SVN URL, 'null' to disable. Subpath use 'branches/[^/]+/([^/]+)(/.*)?' (Ex.: 'branches/...', 'versions/...')
   "svn.layout.branchesRegex": "branches/([^/]+)(/.*)?",

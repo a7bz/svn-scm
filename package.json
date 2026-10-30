@@ -554,6 +554,22 @@
         "command": "svn.toggleInlineBlame",
         "title": "%svn.command.toggleInlineBlame.title%",
         "category": "%svn.category%"
+      },
+      {
+        "command": "svn.forceInlineBlame",
+        "title": "%svn.command.forceInlineBlame.title%",
+        "category": "%svn.category%"
+      }
+    ],
+    "colors": [
+      {
+        "id": "svnBlamer.blame.editorDecorationForeground",
+        "description": "Foreground color for the SVN blame annotation shown at end of line.",
+        "defaults": {
+          "dark": "editorCodeLens.foreground",
+          "light": "editorCodeLens.foreground",
+          "highContrast": "editorCodeLens.foreground"
+        }
       }
     ],
     "submenus": [
@@ -1286,6 +1302,20 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "svn.showInlineBlame",
+        "key": "ctrl+alt+d",
+        "mac": "ctrl+cmd+x",
+        "when": "editorTextFocus && config.svn.enabled"
+      },
+      {
+        "command": "svn.toggleInlineBlame",
+        "key": "ctrl+alt+e",
+        "mac": "ctrl+cmd+y",
+        "when": "editorTextFocus && config.svn.enabled"
+      }
+    ],
     "configuration": {
       "title": "%svn.configuration.title%",
       "properties": {
@@ -1424,30 +1454,77 @@
           "description": "%svn.config.inlineBlame.enabled.description%",
           "default": false
         },
-        "svn.inlineBlame.showAuthor": {
+        "svn.inlineBlame.enableLogs": {
           "type": "boolean",
-          "description": "%svn.config.inlineBlame.showAuthor.description%",
+          "description": "%svn.config.inlineBlame.enableLogs.description%",
           "default": true
         },
-        "svn.inlineBlame.showDate": {
+        "svn.inlineBlame.forceBlame": {
           "type": "boolean",
-          "description": "%svn.config.inlineBlame.showDate.description%",
+          "description": "%svn.config.inlineBlame.forceBlame.description%",
+          "default": false
+        },
+        "svn.inlineBlame.enableVisualIndicators": {
+          "type": "boolean",
+          "description": "%svn.config.inlineBlame.enableVisualIndicators.description%",
           "default": true
         },
-        "svn.inlineBlame.showRevision": {
-          "type": "boolean",
-          "description": "%svn.config.inlineBlame.showRevision.description%",
-          "default": true
-        },
-        "svn.inlineBlame.compact": {
-          "type": "boolean",
-          "description": "%svn.config.inlineBlame.compact.description%",
-          "default": true
-        },
-        "svn.inlineBlame.dateFormat": {
+        "svn.inlineBlame.indicatorColorScheme": {
           "type": "string",
-          "description": "%svn.config.inlineBlame.dateFormat.description%",
-          "default": "YYYY-MM-DD"
+          "description": "%svn.config.inlineBlame.indicatorColorScheme.description%",
+          "default": "random",
+          "enum": [
+            "random",
+            "redToGreen",
+            "blue",
+            "teal",
+            "violet",
+            "vermilion",
+            "custom"
+          ],
+          "enumItemLabels": [
+            "Random",
+            "Red → Green",
+            "Blue",
+            "Teal",
+            "Violet",
+            "Vermilion",
+            "Custom gradient"
+          ],
+          "enumDescriptions": [
+            "%svn.config.inlineBlame.indicatorColorScheme.random%",
+            "%svn.config.inlineBlame.indicatorColorScheme.redToGreen%",
+            "%svn.config.inlineBlame.indicatorColorScheme.blue%",
+            "%svn.config.inlineBlame.indicatorColorScheme.teal%",
+            "%svn.config.inlineBlame.indicatorColorScheme.violet%",
+            "%svn.config.inlineBlame.indicatorColorScheme.vermilion%",
+            "%svn.config.inlineBlame.indicatorColorScheme.custom%"
+          ]
+        },
+        "svn.inlineBlame.indicatorCustomOldestColor": {
+          "type": "string",
+          "description": "%svn.config.inlineBlame.indicatorCustomOldestColor.description%",
+          "default": "#6b7280",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "svn.inlineBlame.indicatorCustomNewestColor": {
+          "type": "string",
+          "description": "%svn.config.inlineBlame.indicatorCustomNewestColor.description%",
+          "default": "#1f5f9f",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "svn.inlineBlame.indicatorCustomOutlineColor": {
+          "type": "string",
+          "description": "%svn.config.inlineBlame.indicatorCustomOutlineColor.description%",
+          "default": "",
+          "pattern": "^(|#[0-9a-fA-F]{6})$"
+        },
+        "svn.inlineBlame.viewportBuffer": {
+          "type": "integer",
+          "description": "%svn.config.inlineBlame.viewportBuffer.description%",
+          "default": 200,
+          "minimum": 0,
+          "maximum": 10000
         },
         "svn.layout.branchesRegex": {
           "type": [

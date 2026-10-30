@@ -1019,17 +1019,35 @@ export class Repository {
    * `svn blame` for a single file, parsed into per-line metadata.
    * Returns an empty array when the file has no blame information
    * (e.g. unversioned).
+   *
+   * `force` adds `--force`, which lets SVN blame files it would otherwise
+   * skip (e.g. binary files). `ignoreWhitespace` adds
+   * `-x -w --ignore-eol-style`, matching the "SVN Blamer" extension so
+   * whitespace/EOL-only changes are ignored; it is opt-in so the "Blame
+   * (Annotate)" document keeps showing the raw attribution.
    */
   public async blame(
     file: string,
-    revision?: string
+    options: {
+      force?: boolean;
+      revision?: string;
+      ignoreWhitespace?: boolean;
+    } = {}
   ): Promise<ISvnBlameLine[]> {
     file = this.removeAbsolutePath(file);
 
     const args = ["blame", "--xml"];
 
-    if (revision) {
-      args.push("-r", revision);
+    if (options.ignoreWhitespace) {
+      args.push("-x", "-w --ignore-eol-style");
+    }
+
+    if (options.force) {
+      args.push("--force");
+    }
+
+    if (options.revision) {
+      args.push("-r", options.revision);
     }
 
     args.push(file);

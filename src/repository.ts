@@ -996,6 +996,17 @@ export class Repository implements IRemoteRepository {
     );
   }
 
+  /**
+   * Fetch a single revision's log entries without the Source Control progress
+   * indicator. Used by the inline blame hover: `Operation.Log` would flash the
+   * progress bar in the SCM view on every hovered line.
+   */
+  public async logMessage(revision: string, target?: string | Uri) {
+    return this.run(Operation.Blame, () =>
+      this.repository.log(revision, revision, 1, target)
+    );
+  }
+
   public async logByUser(user: string) {
     return this.run(Operation.Log, () => this.repository.logByUser(user));
   }
@@ -1044,10 +1055,10 @@ export class Repository implements IRemoteRepository {
 
   public async blame(
     filePath: string,
-    revision?: string
+    options?: { force?: boolean; revision?: string; ignoreWhitespace?: boolean }
   ): Promise<ISvnBlameLine[]> {
     return this.run<ISvnBlameLine[]>(Operation.Blame, () =>
-      this.repository.blame(filePath, revision)
+      this.repository.blame(filePath, options)
     );
   }
 

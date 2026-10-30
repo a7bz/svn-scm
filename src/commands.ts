@@ -18,6 +18,7 @@ import { FileOpen } from "./commands/fileOpen";
 import { FinishCheckout } from "./commands/finishCheckout";
 import { GetSourceControlManager } from "./commands/get_source_control_manager";
 import {
+  ForceInlineBlame,
   HideInlineBlame,
   ShowInlineBlame,
   ToggleInlineBlame
@@ -135,4 +136,5 @@ export function registerCommands(
   disposables.push(new ShowInlineBlame(inlineBlame));
   disposables.push(new HideInlineBlame(inlineBlame));
   disposables.push(new ToggleInlineBlame(inlineBlame));
+  disposables.push(new ForceInlineBlame(inlineBlame));
 }

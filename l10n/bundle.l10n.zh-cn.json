@@ -84,8 +84,6 @@
   "Incoming Changes": "传入更改",
   "Incoming changes": "传入更改",
   "Incoming changes (r{0})": "传入更改 (r{0})",
-  "Inline blame disabled": "已关闭行内追溯",
-  "Inline blame enabled": "已开启行内追溯",
   "Incomplete (Need finish checkout)": "不完整（需要完成检出）",
   "Invalid name": "名称无效",
   "Invalid revision": "无效的版本号",
