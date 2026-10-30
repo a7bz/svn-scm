@@ -36,7 +36,11 @@ export async function parseSvnBlame(content: string): Promise<ISvnBlameLine[]> {
         return;
       }
 
-      const target = result.blame && result.blame.target;
+      // `xml2jsParseSettings` uses `explicitRoot: false`, so the root
+      // `<blame>` element is already stripped and `<target>` sits at the top
+      // level. Keep the `result.blame` lookup as a fallback in case the shared
+      // parse settings ever change.
+      const target = (result.blame && result.blame.target) || result.target;
       const entry = target && target.entry;
 
       if (!entry) {

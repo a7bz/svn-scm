@@ -21,14 +21,12 @@ import { ISvnExternal, ISvnProperty } from "../common/types";
 export function parseSvnExternals(content: string): Promise<ISvnExternal[]> {
   return new Promise<ISvnExternal[]>(resolve => {
     xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
-      if (err || !result.properties || !result.properties.target) {
+      const targets = getPropertiesTargets(err, result);
+
+      if (!targets) {
         resolve([]);
         return;
       }
-
-      const targets = Array.isArray(result.properties.target)
-        ? result.properties.target
-        : [result.properties.target];
 
       const externals: ISvnExternal[] = [];
 
@@ -82,14 +80,12 @@ function parseExternalLine(line: string): ISvnExternal {
 export function parseSvnProplist(content: string): Promise<ISvnProperty[]> {
   return new Promise<ISvnProperty[]>(resolve => {
     xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
-      if (err || !result.properties || !result.properties.target) {
+      const targets = getPropertiesTargets(err, result);
+
+      if (!targets) {
         resolve([]);
         return;
       }
-
-      const targets = Array.isArray(result.properties.target)
-        ? result.properties.target
-        : [result.properties.target];
 
       const properties: ISvnProperty[] = [];
 
@@ -125,4 +121,26 @@ function propertyValue(property: any): string {
     return String(property._);
   }
   return "";
+}
+
+/**
+ * `svn propget/proplist --xml` wraps the targets in a `<properties>` root.
+ * `xml2jsParseSettings` uses `explicitRoot: false`, so that root is already
+ * stripped and `target` sits at the top level. The `result.properties` lookup
+ * is kept as a fallback for a non-stripped parse. Returns `undefined` when
+ * there is no target (parse error or no properties).
+ */
+function getPropertiesTargets(err: any, result: any): any[] | undefined {
+  if (err) {
+    return undefined;
+  }
+
+  const target =
+    (result.properties && result.properties.target) || result.target;
+
+  if (!target) {
+    return undefined;
+  }
+
+  return Array.isArray(target) ? target : [target];
 }
