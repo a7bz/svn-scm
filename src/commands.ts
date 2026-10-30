@@ -93,8 +93,9 @@ export function registerCommands(
   disposables.push(new PatchAll());
   disposables.push(new Patch());
   disposables.push(new PatchChangeList());
-  disposables.push(new ExportPatch());
-  disposables.push(new ExportPatchAll(new ExportPatch()));
+  const exportPatch = new ExportPatch();
+  disposables.push(exportPatch);
+  disposables.push(new ExportPatchAll(exportPatch));
   disposables.push(new Remove());
   disposables.push(new ResolveAll());
   disposables.push(new Resolve());
