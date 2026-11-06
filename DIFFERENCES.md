@@ -88,9 +88,10 @@ Commands and behaviour:
 - `svn.inlineBlame.autoBlame` (default `false`) — blame files automatically when
   they become active. `svn.showInlineBlame` (command palette / `Ctrl+Alt+D`)
   blames the active file and `svn.toggleInlineBlame` (`Ctrl+Alt+E`) toggles it.
-- The editor title bar has a single `$(git-merge)` button that toggles blame for
-  the **current file** only, exactly like SVN Blamer. There is no global on/off
-  setting and toggling does not show a notification.
+- The editor title bar has an `$(eye)` / `$(eye-closed)` button that toggles
+  blame for the **current file** only, and its icon changes to reflect the
+  current on/off state. There is no global on/off setting and toggling does
+  not show a notification.
 - `svn.clearInlineBlame` — remove the annotations from the active file.
 - `svn.forceInlineBlame` — re-run blame with `--force` for files SVN would
   otherwise skip (e.g. binary files).
@@ -196,6 +197,25 @@ always match the committed revision.
   an immediate working copy refresh on top of the remote check.
 - Added `src/test/autorefresh.test.ts`, which verifies that new, modified and
   deleted files show up without any manual refresh.
+
+### 9. Changes made by external tools are missed after startup
+- Detection relied exclusively on VS Code's file watcher. Changes written by
+  another process (AI coding agents, terminals, build tools) can be missed when
+  the watcher is disabled for a large workspace, the path is excluded, the
+  working copy lives on a network drive, or the working copy root is outside the
+  opened workspace folder. Without a watcher event nothing re-ran `svn status`,
+  so the Source Control view stayed stale until the window was reloaded.
+- The watcher now covers both the working copy root and the opened workspace
+  folder, and a new `svn.refresh.pollInterval` (default 30 s, `0` disables) runs
+  a local `svn status` in the background while the window is focused and the
+  repository is idle. This is a safety net for missed events; it does not check
+  the server.
+- The remote check (`svn status --show-updates`) no longer starts while another
+  `svn` command is running, and when it fails (offline, VPN down, auth error) a
+  local-only status is run instead, so local changes still appear in the view.
+- The Update command now includes the real SVN error text (instead of a bare
+  "Unable to update") and offers a one-click `svn cleanup` when the working copy
+  is locked.
 
 ## Changed Behaviors
 

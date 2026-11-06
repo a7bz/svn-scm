@@ -91,11 +91,12 @@ This fork ships two built-in blame features, so no extra extension is needed:
   the revision and the commit log message.
   - `svn.inlineBlame.autoBlame` (default `false`) blames files automatically
     when they become active.
-  - A `$(git-merge)` button in the editor title bar (top-right) toggles blame for
-    the **current file** only; it is not a global setting. `svn.showInlineBlame`
-    is bound to `Ctrl+Alt+D` and `svn.toggleInlineBlame` to `Ctrl+Alt+E`.
-    `svn.clearInlineBlame` removes the annotations, and `svn.forceInlineBlame`
-    re-runs blame with `--force`.
+  - An `$(eye)` / `$(eye-closed)` button in the editor title bar (top-right)
+    toggles blame for the **current file** only; the icon reflects whether
+    blame is currently on. It is not a global setting.
+    `svn.showInlineBlame` is bound to `Ctrl+Alt+D` and
+    `svn.toggleInlineBlame` to `Ctrl+Alt+E`. `svn.clearInlineBlame` removes
+    the annotations, and `svn.forceInlineBlame` re-runs blame with `--force`.
   - The gutter indicators can be coloured with several schemes
     (`svn.inlineBlame.indicatorColorScheme`): `random`, `redToGreen`, `blue`,
     `teal`, `violet`, `vermilion` or a `custom` gradient.
@@ -112,6 +113,11 @@ Here are all of the extension settings with their default values. To change any 
 {
   // Whether auto refreshing is enabled
   "svn.autorefresh": true,
+
+  // Interval in seconds for the background working copy status check used when
+  // file system events are missed (for example changes made by external tools).
+  // Set to 0 to disable. Requires svn.autorefresh
+  "svn.refresh.pollInterval": 30,
 
   // Show the "Blame (Annotate)" command in menus and the command palette
   "svn.blame.enabled": true,
