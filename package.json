@@ -2,7 +2,7 @@
   "name": "svn-enhanced-by-a7bz",
   "displayName": "%svn.displayName%",
   "description": "%svn.description%",
-  "version": "2.17.3",
+  "version": "2.17.4",
   "publisher": "a7bz",
   "engines": {
     "vscode": "^1.73.0",
@@ -541,19 +541,18 @@
       {
         "command": "svn.showInlineBlame",
         "title": "%svn.command.showInlineBlame.title%",
-        "category": "%svn.category%",
-        "icon": "$(eye)"
+        "category": "%svn.category%"
       },
       {
-        "command": "svn.hideInlineBlame",
-        "title": "%svn.command.hideInlineBlame.title%",
-        "category": "%svn.category%",
-        "icon": "$(eye-closed)"
+        "command": "svn.clearInlineBlame",
+        "title": "%svn.command.clearInlineBlame.title%",
+        "category": "%svn.category%"
       },
       {
         "command": "svn.toggleInlineBlame",
         "title": "%svn.command.toggleInlineBlame.title%",
-        "category": "%svn.category%"
+        "category": "%svn.category%",
+        "icon": "$(git-merge)"
       },
       {
         "command": "svn.forceInlineBlame",
@@ -872,14 +871,6 @@
         {
           "command": "svn.toggleLock",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn17orGreater"
-        },
-        {
-          "command": "svn.showInlineBlame",
-          "when": "false"
-        },
-        {
-          "command": "svn.hideInlineBlame",
-          "when": "false"
         },
         {
           "command": "svn.toggleInlineBlame",
@@ -1264,14 +1255,9 @@
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && isSvn17orGreater"
         },
         {
-          "command": "svn.showInlineBlame",
+          "command": "svn.toggleInlineBlame",
           "group": "navigation",
-          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && !svnInlineBlameEnabled"
-        },
-        {
-          "command": "svn.hideInlineBlame",
-          "group": "navigation",
-          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && svnInlineBlameEnabled"
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file"
         }
       ],
       "explorer/context": [
@@ -1449,28 +1435,33 @@
           "description": "%svn.config.ignoreWorkingCopyIsTooOld.description%",
           "default": false
         },
-        "svn.inlineBlame.enabled": {
+        "svn.inlineBlame.autoBlame": {
           "type": "boolean",
-          "description": "%svn.config.inlineBlame.enabled.description%",
+          "scope": "resource",
+          "description": "%svn.config.inlineBlame.autoBlame.description%",
           "default": false
         },
         "svn.inlineBlame.enableLogs": {
           "type": "boolean",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.enableLogs.description%",
           "default": true
         },
         "svn.inlineBlame.forceBlame": {
           "type": "boolean",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.forceBlame.description%",
           "default": false
         },
         "svn.inlineBlame.enableVisualIndicators": {
           "type": "boolean",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.enableVisualIndicators.description%",
           "default": true
         },
         "svn.inlineBlame.indicatorColorScheme": {
           "type": "string",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.indicatorColorScheme.description%",
           "default": "random",
           "enum": [
@@ -1503,24 +1494,28 @@
         },
         "svn.inlineBlame.indicatorCustomOldestColor": {
           "type": "string",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.indicatorCustomOldestColor.description%",
           "default": "#6b7280",
           "pattern": "^#[0-9a-fA-F]{6}$"
         },
         "svn.inlineBlame.indicatorCustomNewestColor": {
           "type": "string",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.indicatorCustomNewestColor.description%",
           "default": "#1f5f9f",
           "pattern": "^#[0-9a-fA-F]{6}$"
         },
         "svn.inlineBlame.indicatorCustomOutlineColor": {
           "type": "string",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.indicatorCustomOutlineColor.description%",
           "default": "",
           "pattern": "^(|#[0-9a-fA-F]{6})$"
         },
         "svn.inlineBlame.viewportBuffer": {
           "type": "integer",
+          "scope": "resource",
           "description": "%svn.config.inlineBlame.viewportBuffer.description%",
           "default": 200,
           "minimum": 0,

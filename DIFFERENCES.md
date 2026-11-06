@@ -85,12 +85,13 @@ instead of a private SVN wrapper:
 
 Commands and behaviour:
 
-- `svn.inlineBlame.enabled` (default `false`) — master switch. When on, blame is
-  applied automatically as files are opened. `svn.showInlineBlame` /
-  `svn.hideInlineBlame` (editor title bar, `Ctrl+Alt+D`) and
-  `svn.toggleInlineBlame` (command palette, `Ctrl+Alt+E`) flip it. The title-bar
-  button swaps between the `$(eye-closed)` and `$(eye)` icons through the
-  `svnInlineBlameEnabled` context key. Toggling does not show a notification.
+- `svn.inlineBlame.autoBlame` (default `false`) — blame files automatically when
+  they become active. `svn.showInlineBlame` (command palette / `Ctrl+Alt+D`)
+  blames the active file and `svn.toggleInlineBlame` (`Ctrl+Alt+E`) toggles it.
+- The editor title bar has a single `$(git-merge)` button that toggles blame for
+  the **current file** only, exactly like SVN Blamer. There is no global on/off
+  setting and toggling does not show a notification.
+- `svn.clearInlineBlame` — remove the annotations from the active file.
 - `svn.forceInlineBlame` — re-run blame with `--force` for files SVN would
   otherwise skip (e.g. binary files).
 
@@ -177,6 +178,24 @@ always match the committed revision.
   placeholder-based `l10n.t("... {0} ...", x)` calls across commands and views
   so the strings are actually translated, and added the new keys to the
   English/Chinese bundles.
+
+### 8. Source Control view stops refreshing after startup
+- The automatic refresh required the VS Code window to be focused: file changes
+  made while the window was in the background waited for a focus event that
+  never came, so new/modified files and deletions never appeared in the Source
+  Control view.
+- Change events were also dropped while any other operation was running, and a
+  slow or stuck command (`svn status --show-updates`, a pending auth prompt,
+  ...) blocked refreshes indefinitely because the code waited for it without a
+  timeout. Once that happened, the view stayed stale until the window was
+  focused again.
+- `Repository.onFSChange()` now always queues a refresh (the existing
+  debounce/throttle still limits it to one run per burst), the new
+  `Repository.whenIdle()` waits at most 10 seconds for running operations, and
+  window focus is no longer a requirement. A focus event additionally triggers
+  an immediate working copy refresh on top of the remote check.
+- Added `src/test/autorefresh.test.ts`, which verifies that new, modified and
+  deleted files show up without any manual refresh.
 
 ## Changed Behaviors
 

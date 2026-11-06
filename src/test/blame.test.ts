@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import dayjs from "dayjs";
 import {
   createChronologicalIconMapFromFactory,
   createRandomIconMapFromItems,
@@ -70,6 +71,13 @@ suite("Blame formatting", () => {
       assert.ok(message.includes("$(history) "));
       assert.ok(message.includes("$(git-commit) 42"));
       assert.ok(message.endsWith("did something"));
+    });
+
+    test("uses the DATETIME_MED style absolute date", () => {
+      const message = mapBlameToHoverMessage(blame());
+      const absolute = dayjs(blame().date).format("MMM D, YYYY, h:mm A");
+
+      assert.ok(message.includes(`_(${absolute})_`));
     });
 
     test("omits missing fields", () => {

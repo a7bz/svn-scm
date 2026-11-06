@@ -562,6 +562,15 @@ export class Blamer {
 
       this.setRecordForFile(fileName, record);
 
+      // Show the annotation for the current line right away instead of waiting
+      // for the next selection change.
+      this.activeLineDecoration?.dispose();
+      await this.setUpdatedDecoration(
+        textEditor,
+        fileName,
+        (textEditor.selection.active.line + 1).toString()
+      );
+
       if (
         iconMapRefreshVersion !== this.indicatorRefreshVersion ||
         (this.decorationManager.usesThemeAwareIndicatorScheme(
@@ -660,7 +669,14 @@ export class Blamer {
         return;
       }
 
-      // Enablement (auto-blame on open) is handled by the caller.
+      const autoBlame = workspace
+        .getConfiguration("svn", textEditor.document.uri)
+        .get<boolean>("inlineBlame.autoBlame", false);
+
+      if (!autoBlame) {
+        return;
+      }
+
       return await this.showBlameForFile(
         textEditor,
         fileName,

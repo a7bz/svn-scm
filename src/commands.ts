@@ -18,8 +18,8 @@ import { FileOpen } from "./commands/fileOpen";
 import { FinishCheckout } from "./commands/finishCheckout";
 import { GetSourceControlManager } from "./commands/get_source_control_manager";
 import {
+  ClearInlineBlame,
   ForceInlineBlame,
-  HideInlineBlame,
   ShowInlineBlame,
   ToggleInlineBlame
 } from "./commands/inlineBlame";
@@ -134,7 +134,7 @@ export function registerCommands(
   disposables.push(new Unlock());
   disposables.push(new ToggleLock());
   disposables.push(new ShowInlineBlame(inlineBlame));
-  disposables.push(new HideInlineBlame(inlineBlame));
+  disposables.push(new ClearInlineBlame(inlineBlame));
   disposables.push(new ToggleInlineBlame(inlineBlame));
   disposables.push(new ForceInlineBlame(inlineBlame));
 }

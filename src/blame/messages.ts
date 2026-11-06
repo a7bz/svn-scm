@@ -50,7 +50,8 @@ const mapRevisionDate = (date?: string) => {
   }
 
   const revisionDateRelative = dayjs(date).fromNow();
-  const revisionDate = dayjs(date).format("YYYY-MM-DD HH:mm");
+  // Matches luxon's `DateTime.DATETIME_MED`, used by SVN Blamer.
+  const revisionDate = dayjs(date).format("MMM D, YYYY, h:mm A");
 
   return `$(history) ${revisionDateRelative} _(${revisionDate})_`;
 };

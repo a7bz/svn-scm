@@ -83,13 +83,19 @@ This fork ships two built-in blame features, so no extra extension is needed:
 - **Blame (Annotate)** — `SVN: Blame (Annotate)` opens a read-only document with
   every line prefixed by `r<revision> <author> <date> | <line>`. It can be
   hidden with `svn.blame.enabled`.
-- **Inline blame** — `svn.inlineBlame.enabled` (default `false`) ports the
-  full visual effect of
+- **Inline blame** — ports the full visual effect of
   [SVN Blamer / blamer-vs](https://github.com/BeauAgst/blamer-vs):
   colour-coded revision indicators in the gutter, the
   `r<revision>: <author>, <relative time>` annotation on the **current line**,
   and a hover tooltip with the author, both relative and absolute commit date,
   the revision and the commit log message.
+  - `svn.inlineBlame.autoBlame` (default `false`) blames files automatically
+    when they become active.
+  - A `$(git-merge)` button in the editor title bar (top-right) toggles blame for
+    the **current file** only; it is not a global setting. `svn.showInlineBlame`
+    is bound to `Ctrl+Alt+D` and `svn.toggleInlineBlame` to `Ctrl+Alt+E`.
+    `svn.clearInlineBlame` removes the annotations, and `svn.forceInlineBlame`
+    re-runs blame with `--force`.
   - The gutter indicators can be coloured with several schemes
     (`svn.inlineBlame.indicatorColorScheme`): `random`, `redToGreen`, `blue`,
     `teal`, `violet`, `vermilion` or a `custom` gradient.
@@ -97,11 +103,6 @@ This fork ships two built-in blame features, so no extra extension is needed:
     hover; disabling it speeds up blame.
   - `svn.inlineBlame.forceBlame` (default `false`) adds `--force` so SVN can
     blame files it would otherwise skip (e.g. binary files).
-  - A one-click toggle is added to the editor title bar (top-right) whenever a
-    file is open: `$(eye-closed)` shows inline blame, `$(eye)` hides it.
-    `svn.showInlineBlame` is bound to `Ctrl+Alt+D`, and `svn.toggleInlineBlame`
-    (command palette) to `Ctrl+Alt+E`. `svn.forceInlineBlame` re-runs blame with
-    `--force`.
 
 ## Settings
 Here are all of the extension settings with their default values. To change any of these, add the relevant Config key and value to your VSCode settings.json file. Alternatively search for the config key in the settings UI to change its value.
@@ -172,8 +173,8 @@ Here are all of the extension settings with their default values. To change any 
   // Ignores the warning when working copy is too old
   "svn.ignoreWorkingCopyIsTooOld": null,
 
-  // Show the author, relative commit time and revision at the end of the current line, with colour-coded revision indicators in the gutter (inline blame, like SVN Blamer). Can be toggled from the editor title bar.
-  "svn.inlineBlame.enabled": false,
+  // Automatically blame files when they become active. Use the editor title-bar button to toggle blame for the current file.
+  "svn.inlineBlame.autoBlame": false,
 
   // Fetch and show the revision log message in the hover tooltip. Disabling this significantly speeds up blame.
   "svn.inlineBlame.enableLogs": true,
