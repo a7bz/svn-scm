@@ -1649,6 +1649,11 @@
           "description": "%svn.config.previousCommitsUser.description%",
           "default": null
         },
+        "svn.refresh.pollInterval": {
+          "type": "number",
+          "description": "%svn.config.refresh.pollInterval.description%",
+          "default": 30
+        },
         "svn.refresh.remoteChanges": {
           "type": "boolean",
           "description": "%svn.config.refresh.remoteChanges.description%",

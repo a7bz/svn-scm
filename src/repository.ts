@@ -89,6 +89,7 @@ export class Repository implements IRemoteRepository {
   public isIncomplete: boolean = false;
   public needCleanUp: boolean = false;
   private remoteChangedUpdateInterval?: NodeJS.Timer;
+  private statusPollInterval?: NodeJS.Timer;
   private deletedUris: Uri[] = [];
   private canSaveAuth: boolean = false;
 
@@ -196,7 +197,10 @@ export class Repository implements IRemoteRepository {
     public repository: BaseRepository,
     private secrets: SecretStorage
   ) {
-    this._fsWatcher = new RepositoryFilesWatcher(repository.root);
+    this._fsWatcher = new RepositoryFilesWatcher(
+      repository.root,
+      repository.workspaceRoot
+    );
     this.disposables.push(this._fsWatcher);
 
     this._fsWatcher.onDidAny(this.onFSChange, this, this.disposables);
@@ -257,11 +261,15 @@ export class Repository implements IRemoteRepository {
     // The this.unversioned can recreated by update state model
     this.disposables.push(toDisposable(() => this.unversioned.dispose()));
 
-    // Dispose the setInterval of Remote Changes
+    // Dispose the timers of Remote Changes and of the status polling fallback
     this.disposables.push(
       toDisposable(() => {
         if (this.remoteChangedUpdateInterval) {
           clearInterval(this.remoteChangedUpdateInterval);
+        }
+
+        if (this.statusPollInterval) {
+          clearInterval(this.statusPollInterval);
         }
       })
     );
@@ -278,6 +286,12 @@ export class Repository implements IRemoteRepository {
 
     this.createRemoteChangedInterval();
 
+    // Fallback for file systems / configurations where the VS Code file
+    // watcher does not report changes made by other processes (AI agents,
+    // terminals, network drives, ...). Without it a missed watcher event left
+    // the Source Control view stale until the next window focus or reload.
+    this.createStatusPollInterval();
+
     this.refreshRemoteChanges();
 
     // On change config, dispose current interval and create a new.
@@ -291,6 +305,18 @@ export class Repository implements IRemoteRepository {
           this.createRemoteChangedInterval();
 
           this.refreshRemoteChanges();
+        }
+
+        if (
+          e.affectsConfiguration("svn.autorefresh") ||
+          e.affectsConfiguration("svn.refresh.pollInterval")
+        ) {
+          if (this.statusPollInterval) {
+            clearInterval(this.statusPollInterval);
+            this.statusPollInterval = undefined;
+          }
+
+          this.createStatusPollInterval();
         }
       })
     );
@@ -336,6 +362,49 @@ export class Repository implements IRemoteRepository {
     this.remoteChangedUpdateInterval = setInterval(() => {
       this.refreshRemoteChanges();
     }, 1000 * updateFreq);
+  }
+
+  /**
+   * Periodically re-run `svn status` as a safety net.
+   *
+   * The extension detects local changes through VS Code's file watcher. That
+   * watcher does not see everything: changes written by another process (AI
+   * coding agents, terminals, build tools), working copies on network drives,
+   * excluded paths or workspaces where VS Code had to disable watching are
+   * silently missed. When that happens the Source Control view stays stale
+   * until the window is reloaded.
+   *
+   * Polling the working copy directly makes the view eventually consistent
+   * even when no watcher event arrives. It only runs while the window is
+   * focused and while the repository is idle, so it never overlaps another
+   * `svn` process and costs nothing while VS Code is in the background.
+   */
+  private createStatusPollInterval() {
+    const autorefresh = configuration.get<boolean>("autorefresh", true);
+    const interval = configuration.get<number>("refresh.pollInterval", 30);
+
+    if (!autorefresh || !interval || interval <= 0) {
+      return;
+    }
+
+    this.statusPollInterval = setInterval(() => {
+      if (!configuration.get<boolean>("autorefresh", true)) {
+        return;
+      }
+
+      if (this.state !== RepositoryState.Idle) {
+        return;
+      }
+
+      // Do not start a status while another command (or the previous poll) is
+      // still running on the same working copy.
+      if (!this.operations.isIdle() || !window.state.focused) {
+        return;
+      }
+
+      // No progress indicator for a background refresh.
+      this.status(false).catch(error => console.error(error));
+    }, 1000 * interval);
   }
 
   /**
@@ -430,8 +499,10 @@ export class Repository implements IRemoteRepository {
     // (e.g. 0) disables the feature and clears the group.
     if (updateFreq !== 0) {
       // Avoid piling up remote checks (e.g. rapid window focus changes or a
-      // slow server) while one is still running.
-      if (this.operations.isRunning(Operation.StatusRemote)) {
+      // slow server) and never start one while another `svn` command is
+      // running on the same working copy: concurrent commands can leave the
+      // working copy locked (E155004) and make `svn update` fail.
+      if (!this.operations.isIdle()) {
         return;
       }
 
@@ -442,6 +513,17 @@ export class Repository implements IRemoteRepository {
         // rejection so background refreshes (interval/focus) never become
         // unhandled promise rejections.
         console.error(error);
+
+        // `svn status --show-updates` is also the periodic refresh used to
+        // pick up local changes. When the server cannot be reached (offline,
+        // VPN down, authentication problem) that command fails as a whole, so
+        // fall back to a local-only status. Otherwise the Source Control view
+        // would stay stale until the window is reloaded.
+        try {
+          await this.status(false);
+        } catch (localError) {
+          console.error(localError);
+        }
       }
     } else {
       // Remove list of remote changes
@@ -453,7 +535,7 @@ export class Repository implements IRemoteRepository {
   }
 
   private onFSChange(_uri: Uri): void {
-    const autorefresh = configuration.get<boolean>("autorefresh");
+    const autorefresh = configuration.get<boolean>("autorefresh", true);
 
     if (!autorefresh) {
       return;
@@ -812,8 +894,8 @@ export class Repository implements IRemoteRepository {
   }
 
   @throttle
-  public async status() {
-    return this.run(Operation.Status);
+  public async status(showProgress: boolean = true) {
+    return this.run(Operation.Status, undefined, showProgress);
   }
 
   public async show(
@@ -1251,7 +1333,8 @@ export class Repository implements IRemoteRepository {
 
   private async run<T>(
     operation: Operation,
-    runOperation: () => Promise<T> = () => Promise.resolve<any>(null)
+    runOperation: () => Promise<T> = () => Promise.resolve<any>(null),
+    showProgress: boolean = true
   ): Promise<T> {
     if (this.state !== RepositoryState.Idle) {
       throw new Error("Repository not initialized");
@@ -1289,7 +1372,7 @@ export class Repository implements IRemoteRepository {
       }
     };
 
-    return shouldShowProgress(operation)
+    return showProgress && shouldShowProgress(operation)
       ? window.withProgress({ location: ProgressLocation.SourceControl }, run)
       : run();
   }
