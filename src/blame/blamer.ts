@@ -62,6 +62,8 @@ export class Blamer {
   private activeLineDecoration: TextEditorDecorationType | undefined;
   private indicatorRefreshVersion = 0;
   private indicatorThemeRefreshVersion = 0;
+  /** Invalidates in-flight blame requests when blame is cleared for a file. */
+  private blameVersions = new Map<string, number>();
   private statusBarItem: StatusBarItem;
 
   constructor(
@@ -91,6 +93,18 @@ export class Blamer {
       return undefined;
     }
     return this.storage.get(fileName);
+  }
+
+  /** Bump the file's blame generation so older in-flight requests are ignored. */
+  private bumpBlameVersion(fileName: string): number {
+    const version = (this.blameVersions.get(fileName) ?? 0) + 1;
+    this.blameVersions.set(fileName, version);
+    return version;
+  }
+
+  /** Whether the active editor currently has blame annotations applied. */
+  public hasBlameForActiveTextEditor(): boolean {
+    return !!this.getRecordForFile(window.activeTextEditor?.document.fileName);
   }
 
   public setRecordForFile(fileName: string, record: DecorationRecord) {
@@ -416,8 +430,13 @@ export class Blamer {
       return;
     }
 
+    // A clear must always win over a blame request that is still running.
+    this.bumpBlameVersion(fileName);
+
     const record = this.getRecordForFile(fileName);
     this.activeLineDecoration?.dispose();
+    this.activeLineDecoration = undefined;
+    this.activeLine = undefined;
 
     if (!record) {
       return;
@@ -431,6 +450,7 @@ export class Blamer {
     this.activeLineDecoration?.dispose();
     this.statusBarItem.dispose();
     this.clearRecordsForAllFiles();
+    this.blameVersions.clear();
   }
 
   public async clearBlameForActiveTextEditor() {
@@ -502,6 +522,8 @@ export class Blamer {
 
     try {
       await this.clearBlameForFile(fileName);
+      // Establish this request's version after the internal clear bumped it.
+      const blameVersion = this.bumpBlameVersion(fileName);
 
       const repository = this.getRepositoryForFileName(fileName);
       if (!repository) {
@@ -522,6 +544,11 @@ export class Blamer {
         force: forceBlame,
         ignoreWhitespace: true
       });
+
+      if (this.blameVersions.get(fileName) !== blameVersion) {
+        // Blame was cleared while the SVN request was running.
+        return;
+      }
 
       if (!lines?.length) {
         return;
@@ -550,6 +577,12 @@ export class Blamer {
           undefined,
           extendedRanges
         );
+
+      if (this.blameVersions.get(fileName) !== blameVersion) {
+        // Blame was cleared while the decorations were being created.
+        disposeDecorations([...new Set(Object.values(revisionDecorations))]);
+        return;
+      }
 
       const record = mapToDecorationRecord({
         icons,
@@ -729,6 +762,13 @@ export class Blamer {
       const log = await this.getLogForRevision(fileName, blame.revision);
 
       if (!log) {
+        return;
+      }
+
+      // While the log was loading, the user may have cleared the blame (or
+      // the record may have been replaced by a refresh). Bail out instead of
+      // resurrecting a record that no longer exists.
+      if (this.getRecordForFile(fileName) !== record) {
         return;
       }
 
