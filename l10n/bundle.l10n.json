@@ -221,6 +221,7 @@
   "Unable to switch branch": "Unable to switch branch",
   "Unable to unlock": "Unable to unlock",
   "Unable to update": "Unable to update",
+  "Unable to update: {0}": "Unable to update: {0}",
   "Unable to update externals": "Unable to update externals",
   "Unable to write patch file": "Unable to write patch file",
   "Unlocked {0}": "Unlocked {0}",

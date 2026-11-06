@@ -221,6 +221,7 @@
   "Unable to switch branch": "无法切换分支",
   "Unable to unlock": "无法解锁",
   "Unable to update": "无法更新",
+  "Unable to update: {0}": "无法更新：{0}",
   "Unable to update externals": "无法更新外部引用",
   "Unable to write patch file": "无法写入补丁文件",
   "Unlocked {0}": "已解锁 {0}",
