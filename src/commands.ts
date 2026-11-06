@@ -21,7 +21,9 @@ import {
   ClearInlineBlame,
   ForceInlineBlame,
   ShowInlineBlame,
-  ToggleInlineBlame
+  ToggleInlineBlame,
+  ToggleInlineBlameOff,
+  ToggleInlineBlameOn
 } from "./commands/inlineBlame";
 import { Lock, ToggleLock, Unlock } from "./commands/lock";
 import { Log } from "./commands/log";
@@ -136,5 +138,7 @@ export function registerCommands(
   disposables.push(new ShowInlineBlame(inlineBlame));
   disposables.push(new ClearInlineBlame(inlineBlame));
   disposables.push(new ToggleInlineBlame(inlineBlame));
+  disposables.push(new ToggleInlineBlameOn(inlineBlame));
+  disposables.push(new ToggleInlineBlameOff(inlineBlame));
   disposables.push(new ForceInlineBlame(inlineBlame));
 }

@@ -44,3 +44,32 @@ export class ToggleInlineBlame extends Command {
     await this.provider.toggle();
   }
 }
+
+/**
+ * Editor-title button shown while blame is off. It still toggles (rather than
+ * only showing) so that a stale on/off context key can never trap the user in
+ * the enabled state.
+ */
+export class ToggleInlineBlameOn extends Command {
+  constructor(private provider: InlineBlameProvider) {
+    super("svn.toggleInlineBlameOn");
+  }
+
+  public async execute() {
+    await this.provider.toggle();
+  }
+}
+
+/**
+ * Editor-title button shown while blame is on. It still toggles (rather than
+ * only clearing) for the same reason as {@link ToggleInlineBlameOn}.
+ */
+export class ToggleInlineBlameOff extends Command {
+  constructor(private provider: InlineBlameProvider) {
+    super("svn.toggleInlineBlameOff");
+  }
+
+  public async execute() {
+    await this.provider.toggle();
+  }
+}

@@ -555,6 +555,18 @@
         "icon": "$(git-merge)"
       },
       {
+        "command": "svn.toggleInlineBlameOn",
+        "title": "%svn.command.showInlineBlame.title%",
+        "category": "%svn.category%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "svn.toggleInlineBlameOff",
+        "title": "%svn.command.clearInlineBlame.title%",
+        "category": "%svn.category%",
+        "icon": "$(eye-closed)"
+      },
+      {
         "command": "svn.forceInlineBlame",
         "title": "%svn.command.forceInlineBlame.title%",
         "category": "%svn.category%"
@@ -875,6 +887,14 @@
         {
           "command": "svn.toggleInlineBlame",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
+          "command": "svn.toggleInlineBlameOn",
+          "when": "false"
+        },
+        {
+          "command": "svn.toggleInlineBlameOff",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -1255,9 +1275,14 @@
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file && isSvn17orGreater"
         },
         {
-          "command": "svn.toggleInlineBlame",
+          "command": "svn.toggleInlineBlameOn",
           "group": "navigation",
-          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !isInDiffEditor && resourceScheme == file"
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && !svnInlineBlameActive && !isInDiffEditor && resourceScheme == file"
+        },
+        {
+          "command": "svn.toggleInlineBlameOff",
+          "group": "navigation",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && svnInlineBlameActive && !isInDiffEditor && resourceScheme == file"
         }
       ],
       "explorer/context": [

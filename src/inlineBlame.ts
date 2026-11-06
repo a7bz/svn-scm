@@ -1,4 +1,4 @@
-import { Disposable, window, workspace } from "vscode";
+import { Disposable, TextEditor, window, workspace } from "vscode";
 
 import { Blamer } from "./blame/blamer";
 import { debounce } from "./blame/debounce";
@@ -8,7 +8,10 @@ import { Storage } from "./blame/storage";
 import { DecorationRecord } from "./blame/types";
 import { configuration } from "./helpers/configuration";
 import { SourceControlManager } from "./source_control_manager";
-import { IDisposable } from "./util";
+import { IDisposable, setVscodeContext } from "./util";
+
+/** Context key used to swap the editor title-bar icon between on and off. */
+const INLINE_BLAME_ACTIVE_CONTEXT = "svnInlineBlameActive";
 
 /**
  * Facade that wires the blame engine (ported from the "SVN Blamer" extension)
@@ -38,7 +41,7 @@ export class InlineBlameProvider implements IDisposable {
 
     this.disposables.push(
       window.onDidChangeActiveTextEditor(
-        textEditor => void this.blamer.autoBlame(textEditor)
+        textEditor => void this.autoBlame(textEditor)
       ),
       window.onDidChangeTextEditorSelection(
         debounce(event => void this.blamer.trackLine(event))
@@ -49,9 +52,10 @@ export class InlineBlameProvider implements IDisposable {
       workspace.onDidChangeTextDocument(event =>
         this.blamer.handleDocumentChange(event)
       ),
-      workspace.onDidCloseTextDocument(textDocument =>
-        this.blamer.handleClosedDocument(textDocument)
-      ),
+      workspace.onDidCloseTextDocument(textDocument => {
+        this.blamer.handleClosedDocument(textDocument);
+        this.updateActiveState();
+      }),
       window.onDidChangeActiveColorTheme(() => {
         clearIndicatorUriCache();
         void this.blamer.refreshThemeAwareVisibleBlameIndicators();
@@ -72,21 +76,51 @@ export class InlineBlameProvider implements IDisposable {
         }
       })
     );
+
+    this.updateActiveState();
   }
 
   /** Blame the active file, replacing any existing annotations. */
   public async show(force?: boolean): Promise<void> {
-    await this.blamer.showBlameForActiveTextEditor(force);
+    try {
+      await this.blamer.showBlameForActiveTextEditor(force);
+    } finally {
+      this.updateActiveState();
+    }
   }
 
   /** Remove blame from the active file. */
   public async clear(): Promise<void> {
-    await this.blamer.clearBlameForActiveTextEditor();
+    try {
+      await this.blamer.clearBlameForActiveTextEditor();
+    } finally {
+      this.updateActiveState();
+    }
   }
 
   /** Toggle blame for the active file (the editor title-bar button). */
   public async toggle(): Promise<void> {
-    await this.blamer.toggleBlameForActiveTextEditor();
+    try {
+      await this.blamer.toggleBlameForActiveTextEditor();
+    } finally {
+      this.updateActiveState();
+    }
+  }
+
+  private async autoBlame(textEditor?: TextEditor): Promise<void> {
+    try {
+      await this.blamer.autoBlame(textEditor);
+    } finally {
+      this.updateActiveState();
+    }
+  }
+
+  /** Keep the editor title-bar icon in sync with the active file's state. */
+  private updateActiveState(): void {
+    setVscodeContext(
+      INLINE_BLAME_ACTIVE_CONTEXT,
+      this.blamer.hasBlameForActiveTextEditor()
+    );
   }
 
   public dispose(): void {
