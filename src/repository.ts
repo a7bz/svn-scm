@@ -48,8 +48,6 @@ import { toSvnUri } from "./uri";
 import {
   anyEvent,
   dispose,
-  eventToPromise,
-  filterEvent,
   getSvnDir,
   isDescendant,
   isReadOnly,
@@ -58,6 +56,10 @@ import {
 } from "./util";
 import { match, matchAll } from "./util/globMatch";
 import { RepositoryFilesWatcher } from "./watchers/repositoryFilesWatcher";
+
+// Upper bound for waiting on a busy repository before refreshing anyway.
+// Long running (or stuck) commands must never freeze the auto refresh.
+const IDLE_WAIT_TIMEOUT = 10000;
 
 function shouldShowProgress(operation: Operation): boolean {
   switch (operation) {
@@ -293,13 +295,15 @@ export class Repository implements IRemoteRepository {
       })
     );
 
-    // Recheck the remote repository when the window regains focus, so that
-    // commits pushed by other users show up without waiting for the next
-    // scheduled poll (or a manual refresh).
+    // Recheck the repository when the window regains focus: refresh the remote
+    // changes (commits pushed by other users) and re-run the working copy
+    // status, so anything that changed while VS Code was in the background is
+    // picked up immediately.
     this.disposables.push(
       window.onDidChangeWindowState(e => {
         if (e.focused) {
           this.refreshRemoteChanges();
+          this.eventuallyUpdateWhenIdleAndWait();
         }
       })
     );
@@ -455,42 +459,42 @@ export class Repository implements IRemoteRepository {
       return;
     }
 
-    if (!this.operations.isIdle()) {
-      return;
-    }
-
+    // Do not drop the event while another operation is running. A slow (or
+    // stuck, e.g. waiting for credentials) command used to discard every
+    // subsequent file change, leaving the SCM view stale until the next window
+    // focus event. `updateWhenIdleAndWait` is debounced/throttled and waits for
+    // the repository to become idle (with a bounded timeout) instead.
     this.eventuallyUpdateWhenIdleAndWait();
   }
 
   @debounce(1000)
   private eventuallyUpdateWhenIdleAndWait(): void {
-    this.updateWhenIdleAndWait();
+    // Background refresh: never let a failed `svn status` (disposed repository,
+    // transient error, ...) become an unhandled rejection.
+    this.updateWhenIdleAndWait().catch(error => console.error(error));
   }
 
   @throttle
   private async updateWhenIdleAndWait(): Promise<void> {
-    await this.whenIdleAndFocused();
+    await this.whenIdle();
     await this.status();
     await timeout(5000);
   }
 
-  public async whenIdleAndFocused(): Promise<void> {
-    while (true) {
-      if (!this.operations.isIdle()) {
-        await eventToPromise(this.onDidRunOperation);
-        continue;
-      }
+  /**
+   * Wait until no long running operation is keeping the repository busy.
+   *
+   * The wait is bounded on purpose: a slow or stuck command must never block
+   * file change notifications forever. Window focus is deliberately not
+   * required either, so changes made while VS Code is in the background (or by
+   * another application) show up without the user having to focus the window
+   * first.
+   */
+  public async whenIdle(): Promise<void> {
+    const deadline = Date.now() + IDLE_WAIT_TIMEOUT;
 
-      if (!window.state.focused) {
-        const onDidFocusWindow = filterEvent(
-          window.onDidChangeWindowState,
-          e => e.focused
-        );
-        await eventToPromise(onDidFocusWindow);
-        continue;
-      }
-
-      return;
+    while (!this.operations.isIdle() && Date.now() < deadline) {
+      await timeout(200);
     }
   }
 
