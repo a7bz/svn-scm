@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import { parseSvnBlame } from "../parser/blameParser";
 import { parseSvnExternals, parseSvnProplist } from "../parser/propertyParser";
+import { parseStatusXml } from "../parser/statusParser";
 
 // `svn blame --xml` wraps everything in a `<blame>` root element, while the
 // shared `xml2jsParseSettings` uses `explicitRoot: false` and therefore strips
@@ -54,6 +55,47 @@ suite("SVN XML parsers", () => {
         { name: "svn:mime-type", value: "text/plain" },
         { name: "svn:needs-lock", value: "" }
       ]);
+    });
+  });
+
+  suite("parseStatusXml", () => {
+    test("keeps a repository lock separate from a working copy lock", async () => {
+      // `svn status -u` reports the repository lock in <repos-status>. It must
+      // not be treated as a working copy lock: a modified file that is only
+      // locked in the repository still belongs to the "Changes" group.
+      const statuses = await parseStatusXml(`<?xml version="1.0"?>
+<status>
+<target path="wc">
+<entry path="a.txt">
+<wc-status item="modified" props="none" revision="2">
+<lock><owner>alice</owner></lock>
+</wc-status>
+<repos-status item="none" props="none">
+<lock><owner>alice</owner></lock>
+</repos-status>
+</entry>
+</target>
+</status>`);
+
+      assert.strictEqual(statuses.length, 1);
+      assert.strictEqual(statuses[0].status, "modified");
+      assert.strictEqual(statuses[0].wcStatus.locked, false);
+      assert.strictEqual(statuses[0].wcStatus.reposLocked, true);
+    });
+
+    test("detects a locked working copy administration area", async () => {
+      const statuses = await parseStatusXml(`<?xml version="1.0"?>
+<status>
+<target path="wc">
+<entry path=".">
+<wc-status item="normal" props="none" revision="2" wc-locked="true" />
+</entry>
+</target>
+</status>`);
+
+      assert.strictEqual(statuses.length, 1);
+      assert.strictEqual(statuses[0].wcStatus.locked, true);
+      assert.strictEqual(statuses[0].wcStatus.reposLocked, false);
     });
   });
 

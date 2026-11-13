@@ -17,11 +17,14 @@ function processEntry(
     return list;
   }
 
+  // `wc-locked` means the working copy itself is locked (an interrupted
+  // operation, needs `svn cleanup`). A repository lock (`svn lock`, reported as
+  // `repos-status/lock`) is a completely different thing: the file can still be
+  // modified locally and must stay visible in the Source Control view.
   const wcStatus: IWcStatus = {
-    locked:
-      (!!entry.wcStatus.wcLocked && entry.wcStatus.wcLocked === "true") ||
-      !!(entry.reposStatus && entry.reposStatus.lock),
-    switched: !!entry.wcStatus.switched && entry.wcStatus.switched === "true"
+    locked: !!entry.wcStatus.wcLocked && entry.wcStatus.wcLocked === "true",
+    switched: !!entry.wcStatus.switched && entry.wcStatus.switched === "true",
+    reposLocked: !!(entry.reposStatus && entry.reposStatus.lock)
   };
 
   const r: IFileStatus = {

@@ -191,8 +191,12 @@ export interface ISvnResourceGroup extends SourceControlResourceGroup {
 }
 
 export interface IWcStatus {
+  /** The working copy administration area is locked (needs `svn cleanup`). */
   locked: boolean;
+  /** The entry is switched to another URL. */
   switched: boolean;
+  /** The entry has a repository lock (`svn lock`). Unrelated to `locked`. */
+  reposLocked?: boolean;
 }
 
 export interface IFileStatus {
