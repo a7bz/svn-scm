@@ -199,6 +199,20 @@ export interface IWcStatus {
   reposLocked?: boolean;
 }
 
+/**
+ * A `svn:ignore` / `svn:global-ignores` definition, resolved to the directory
+ * it applies to. Used to filter the files of an unversioned directory when it
+ * is expanded in the Source Control view.
+ */
+export interface IIgnoreRule {
+  /** Directory the property is set on, relative to the root, `/` separated. */
+  path: string;
+  /** Glob patterns, matched against the basename of each entry. */
+  patterns: string[];
+  /** `svn:global-ignores` also applies to every descendant directory. */
+  recursive: boolean;
+}
+
 export interface IFileStatus {
   status: string;
   props: string;

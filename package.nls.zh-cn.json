@@ -144,9 +144,11 @@
   "svn.config.sourceControl.changesLeftClick.description": "设置更改资源状态的左键单击功能",
   "svn.config.sourceControl.combineExternalIfSameServer.description": "如果来自同一服务器，则将 svn 外部项合并到主项中。",
   "svn.config.sourceControl.countUnversioned.description": "允许在状态计数中包含未版本控制文件",
+  "svn.config.sourceControl.expandUnversioned.description": "展开未版本控制目录，列出其中的文件，而不是只显示目录本身。SVN 忽略的文件（svn:ignore、svn:global-ignores、global-ignores）不会显示",
   "svn.config.sourceControl.hideUnversioned.description": "在源代码管理 UI 中隐藏未版本控制文件",
   "svn.config.sourceControl.ignore.description": "忽略未版本控制文件（类似 .gitignore），配置此项将覆盖默认忽略规则",
   "svn.config.sourceControl.ignoreOnCommit.description": "提交时忽略的变更列表",
   "svn.config.sourceControl.ignoreOnStatusCount.description": "状态计数时忽略的变更列表",
+  "svn.config.sourceControl.unversionedLimit.description": "单个未版本控制目录最多列出的文件数。超过该数量时只显示目录本身",
   "svn.config.update.ignoreExternals.description": "设为在更新时忽略外部定义（添加 --ignore-externals）"
 }

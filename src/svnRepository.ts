@@ -6,6 +6,7 @@ import {
   ICpOptions,
   IExecutionResult,
   IFileStatus,
+  IIgnoreRule,
   ISvnBlameLine,
   ISvnExternal,
   ISvnInfo,
@@ -24,7 +25,11 @@ import { getBranchName } from "./helpers/branch";
 import { configuration } from "./helpers/configuration";
 import { parseSvnBlame } from "./parser/blameParser";
 import { parseInfoXml } from "./parser/infoParser";
-import { parseSvnExternals, parseSvnProplist } from "./parser/propertyParser";
+import {
+  parseIgnoreProperties,
+  parseSvnExternals,
+  parseSvnProplist
+} from "./parser/propertyParser";
 import { parseSvnList } from "./parser/listParser";
 import { parseSvnLog } from "./parser/logParser";
 import { parseStatusXml } from "./parser/statusParser";
@@ -440,12 +445,12 @@ export class Repository {
   }
 
   public async commitFiles(message: string, files: string[]) {
-    files = files.map(file => this.removeAbsolutePath(file));
+    files = await this.addMissingParents(files);
 
-    const args = ["commit", ...files];
+    const options: string[] = [];
 
     if (await exists(path.join(this.workspaceRoot, message))) {
-      args.push("--force-log");
+      options.push("--force-log");
     }
 
     let tmpFile: tmp.FileResult | undefined;
@@ -465,16 +470,21 @@ export class Repository {
 
       await writeFile(tmpFile.name, message, "UTF-8");
 
-      args.push("-F", tmpFile.name);
-      args.push("--encoding", "UTF-8");
+      options.push("-F", tmpFile.name);
+      options.push("--encoding", "UTF-8");
     } else {
-      args.push("-m", message);
+      options.push("-m", message);
     }
 
     // Prevents commit the files inside the folder
-    args.push("--depth", "empty");
+    options.push("--depth", "empty");
 
-    const result = await this.exec(args);
+    // A commit must stay a single transaction: splitting it would create one
+    // revision per chunk. `--targets` cannot be used instead because SVN reads
+    // that file in the system ANSI code page on Windows, breaking non-ASCII
+    // paths. The expanded unversioned view can therefore hit the command line
+    // limit on very large selections, which is reported as a normal SVN error.
+    const result = await this.exec(["commit", ...files, ...options]);
 
     // Remove temporary file if exists
     if (tmpFile) {
@@ -523,8 +533,14 @@ export class Repository {
       return [file];
     };
     files = (await Promise.all(files.map(file => allFiles(file)))).flat();
-    files = files.map(file => this.removeAbsolutePath(file));
-    return this.exec(["add", "--depth=empty", ...files]);
+
+    // Every entry of the tree is passed explicitly and `--depth=empty` stops
+    // SVN from walking a directory again, so a directory and its children can
+    // be listed together without the `E200009` "already versioned" error.
+    return this.execWithTargets(["add"], this.collapseTargets(files), [
+      "--parents",
+      "--depth=empty"
+    ]);
   }
 
   public addFiles(files: string[]) {
@@ -532,11 +548,171 @@ export class Repository {
     if (ignoreList.length > 0) {
       return this.addFilesByIgnore(files, ignoreList);
     }
-    files = files.map(file => this.removeAbsolutePath(file));
-    return this.exec(["add", ...files]);
+
+    // `--parents` schedules the parent directories for addition too. This is
+    // required when the Source Control view lists the individual files of an
+    // unversioned directory (the default now): adding `dir/a.txt` alone fails
+    // with `E150000` because `dir` is not under version control yet.
+    //
+    // This call is recursive, so a selected directory already covers its
+    // children and passing both would fail with `E200009`.
+    return this.execWithTargets(
+      ["add"],
+      this.removeDescendants(this.collapseTargets(files)),
+      ["--parents"]
+    );
   }
 
-  public addChangelist(files: string[], changelist: string) {
+  /**
+   * Convert absolute paths to working copy relative ones and drop duplicates.
+   *
+   * `svn add` fails with `E200009` when the same target is passed twice, which
+   * happens when the same file is selected in more than one resource group.
+   */
+  private collapseTargets(files: string[]): string[] {
+    return [...new Set(files.map(file => this.removeAbsolutePath(file)))];
+  }
+
+  /**
+   * Drop every target whose ancestor is also selected.
+   *
+   * Only valid for a recursive `svn add` (no `--depth`), where adding a
+   * directory already covers its children: passing both makes SVN report
+   * `E200009: some targets are already versioned`. It must not be used for a
+   * commit or for `--depth=empty`, where children are not implied.
+   */
+  private removeDescendants(files: string[]): string[] {
+    const normalized = new Set(
+      files.map(file => normalizePath(file === "." ? "" : file))
+    );
+
+    return files.filter(file => {
+      const parts = (file === "." ? "" : file).split(/[\\/]+/);
+
+      let parent = "";
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        parent = parent ? `${parent}/${parts[i]}` : parts[i];
+
+        if (normalized.has(normalizePath(parent))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Make sure every parent directory of the given files is part of the commit.
+   *
+   * `svn commit file` fails with `E200009` when an ancestor is scheduled for
+   * addition but is not part of the same commit ("is not known to exist in the
+   * repository ... yet its child is part of the commit"). That happens as soon
+   * as the Source Control view lists the individual files of an unversioned
+   * directory: adding `dir/a.txt` also schedules `dir`, but a commit of just
+   * `dir/a.txt` would not include it.
+   *
+   * The extra paths are read from `svn status` (only entries that are already
+   * scheduled for addition are added), so a normal commit of modified files is
+   * unaffected and no unrelated file is committed.
+   */
+  private async addMissingParents(files: string[]): Promise<string[]> {
+    const relative = this.collapseTargets(files);
+
+    const parents: string[] = [];
+
+    for (const file of relative) {
+      const parts = file.split(/[\\/]+/);
+
+      let parent = "";
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        parent = parent ? `${parent}/${parts[i]}` : parts[i];
+        parents.push(parent);
+      }
+    }
+
+    const uniqueParents = [...new Set(parents)];
+
+    if (uniqueParents.length === 0) {
+      return relative;
+    }
+
+    const added: string[] = [];
+
+    try {
+      for (const chunk of splitInChunks(
+        uniqueParents,
+        MAX_CLI_LENGTH,
+        parent => parent.length + 1
+      )) {
+        const result = await this.exec(
+          ["status", "--xml", "--depth=empty", ...chunk],
+          { log: false }
+        );
+
+        added.push(
+          ...(await parseStatusXml(result.stdout))
+            .filter(status => status.status === Status.ADDED)
+            .map(status => status.path.replace(/\\/g, "/"))
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    if (added.length === 0) {
+      return relative;
+    }
+
+    return [...relative, ...added];
+  }
+
+  /**
+   * Run a command with an arbitrary number of targets.
+   *
+   * The Source Control view lists the files of unversioned directories one by
+   * one, so an `svn add` can carry hundreds of paths and exceed the OS command
+   * line limit (`spawn ENAMETOOLONG`). The targets are therefore split into
+   * chunks that fit within {@link MAX_CLI_LENGTH} and the command is run once
+   * per chunk.
+   *
+   * `--targets` is not used on purpose: SVN reads that file in the system ANSI
+   * code page on Windows, so paths with non-ASCII characters (e.g. Chinese
+   * directory names) would not be found. Multiple invocations are safe for
+   * `add` because every chunk is self-contained (`--parents` adds the
+   * intermediate directories it needs, and a later chunk sees them as
+   * versioned).
+   */
+  private async execWithTargets(
+    args: string[],
+    targets: string[],
+    options: string[]
+  ): Promise<IExecutionResult> {
+    const chunks = splitInChunks(
+      targets,
+      MAX_CLI_LENGTH,
+      target => target.length + 1
+    );
+
+    const result: IExecutionResult = {
+      exitCode: 0,
+      stdout: "",
+      stderr: ""
+    };
+
+    for (const chunk of chunks) {
+      const chunkResult = await this.exec([...args, ...chunk, ...options]);
+
+      result.stdout += chunkResult.stdout;
+      result.stderr = chunkResult.stderr || result.stderr;
+    }
+
+    return result;
+  }
+
+  public async addChangelist(files: string[], changelist: string) {
     files = files.map(file => this.removeAbsolutePath(file));
     return this.exec(["changelist", changelist, ...files]);
   }
@@ -1170,6 +1346,93 @@ export class Repository {
     const result = await this.exec(["proplist", "--verbose", "--xml", file]);
 
     return parseSvnProplist(result.stdout);
+  }
+
+  /**
+   * Read the ignore rules that apply inside this working copy.
+   *
+   * `svn:ignore` is returned per directory (it only applies there), while
+   * `svn:global-ignores` is inherited by every descendant (SVN >= 1.8). Both
+   * are needed to expand an unversioned directory the way `svn status` would
+   * classify its files.
+   */
+  public async getIgnoreRules(): Promise<IIgnoreRule[]> {
+    const rules: IIgnoreRule[] = [];
+
+    const ignore = await this.propgetAll("svn:ignore");
+    for (const rule of ignore) {
+      rules.push({ ...rule, recursive: false });
+    }
+
+    const globalIgnores = await this.propgetAll("svn:global-ignores", true);
+    for (const rule of globalIgnores) {
+      rules.push({ ...rule, recursive: true });
+    }
+
+    return rules;
+  }
+
+  /**
+   * `svn propget -R --xml` for one property. A missing property is not an
+   * error (SVN prints an empty `<properties/>`), so a failure here means the
+   * property is unavailable on this SVN version and an empty list is returned.
+   */
+  private async propgetAll(
+    name: string,
+    inherited: boolean = false
+  ): Promise<Array<{ path: string; patterns: string[] }>> {
+    const args = ["propget", name, "--xml", "-R"];
+
+    if (inherited) {
+      args.push("--show-inherited-props");
+    }
+
+    args.push(".");
+
+    try {
+      const result = await this.exec(args, { log: false });
+
+      const rules = await parseIgnoreProperties(result.stdout, name);
+
+      return rules.map(rule => ({
+        ...rule,
+        path: this.relativePosixPath(rule.path)
+      }));
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  }
+
+  /**
+   * Convert a path printed by `svn propget` into a root-relative POSIX path.
+   *
+   * `--show-inherited-props` reports a rule inherited from above the working
+   * copy root as a URL (or as a path outside the working copy) when the
+   * checkout only covers a subdirectory. SVN still applies such a rule to the
+   * whole working copy, so it is mapped to `.` rather than dropped.
+   */
+  private relativePosixPath(value: string): string {
+    if (!value) {
+      return ".";
+    }
+
+    const normalized = normalizePath(value);
+    const root = normalizePath(this.workspaceRoot);
+
+    if (normalized === root) {
+      return ".";
+    }
+
+    if (!isDescendant(root, normalized)) {
+      return ".";
+    }
+
+    const relative = path.relative(this.workspaceRoot, value);
+
+    return relative === ""
+      ? "."
+      : fixPathSeparator(relative).replace(/\\/g, "/");
   }
 
   /**

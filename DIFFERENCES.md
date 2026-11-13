@@ -117,6 +117,41 @@ document is edited, refreshed when the indicator scheme or the colour theme
 changes, and hidden while the document has unsaved changes so line numbers
 always match the committed revision.
 
+### 6. Unversioned folders listed file by file
+- `svn status` reports an unversioned directory as a single entry and never
+  descends into it, not even with `--depth=infinity` (verified against SVN
+  1.14.5). The Source Control view therefore showed one opaque folder where the
+  built-in Git extension would list every untracked file.
+- The extension now walks the folder itself (`src/unversioned.ts`) and lists the
+  individual files, sorted and breadth-first.
+- Entries SVN would ignore are filtered out, so the list matches what `svn add`
+  would version. Three rule sources are combined:
+  - `svn:ignore` — applies only to the directory the property is set on.
+  - `svn:global-ignores` — applies to every descendant (SVN >= 1.8), read with
+    `--show-inherited-props`.
+  - `miscellany:global-ignores` — read from the SVN `config` file
+    (`%APPDATA%\Subversion\config`, `~/.subversion/config`, or `SVN_CONFIG_DIR`),
+    falling back to SVN's built-in defaults when the option is commented out. An
+    explicit empty value (`global-ignores =`) disables them, like SVN does.
+- Patterns are matched against the entry name and `*` matches leading dots, as
+  in SVN (`*.rej` also matches `.foo.rej`).
+- When the checkout only covers a subdirectory, a `svn:global-ignores` rule
+  inherited from above the working copy is reported as a URL; SVN still applies
+  it, so it is mapped to the working copy root instead of being dropped.
+- The directory entry is replaced by its files and only kept when nothing is
+  left (empty folder, everything ignored, or the walk was aborted). Nested
+  working copies are not expanded. The listed files still respect
+  `files.exclude` and `svn.sourceControl.ignore`, like any other status entry.
+- New settings `svn.sourceControl.expandUnversioned` (default `true`) and
+  `svn.sourceControl.unversionedLimit` (default `1000`; above that the folder is
+  shown as one entry again, so a build output folder cannot freeze the view).
+- Ignore rules are cached for 30 s and invalidated on `.svn` events.
+- `src/test/unversioned.test.ts` covers the walker, the ignore matcher and the
+  `config` parser; `src/test/parsers.test.ts` covers `parseIgnoreProperties`
+  (including inherited properties). The result was also compared against
+  `svn add` on real working copies (root-level, directory-scoped and inherited
+  rules): identical file lists.
+
 ## Fixed Bugs
 
 ### 1. "Missing dependency" error after packaging/installing
@@ -255,6 +290,26 @@ always match the committed revision.
 
 ## Changed Behaviors
 
+- **Unversioned folders are listed file by file** (see Added Features 6). This
+  changes what the Source Control view shows and how `svn add` / `svn commit`
+  must be invoked:
+  - **`svn add` now passes `--parents`**: adding `dir/a.txt` from the expanded
+    view failed with `E150000: Can't find parent directory's node` because `dir`
+    was not under version control yet. `--parents` schedules the intermediate
+    directories too. Targets are de-duplicated (the same file can be selected in
+    several resource groups) and, for the recursive `add`, targets already
+    covered by a selected parent are dropped (`E200009`). Very long target lists
+    are split into several `add` calls to stay under the command line limit;
+    `--targets` is not used because SVN reads that file in the system ANSI code
+    page on Windows, which breaks non-ASCII paths.
+  - **Commits include missing added parents**: a commit of `dir/a.txt` whose
+    parent `dir` was scheduled for addition by `--parents` failed with
+    `E200009: ... is not known to exist in the repository and is not part of the
+    commit, yet its child ... is part of the commit`. The ancestors are now read
+    from `svn status --depth=empty` and only the ones already marked `added` are
+    added to the commit, so a normal commit of modified files is unchanged. A
+    commit is never split into several calls, because each one would create its
+    own revision.
 - **Build system**: migrated from `yarn + webpack` to `pnpm + vite`.
   - Removed `webpack.config.js`, `yarn.lock`; added `vite.config.ts`, `pnpm-lock.yaml`.
   - Replaced `node-sass` with Dart `sass` (avoids `node-gyp` failures).

@@ -144,9 +144,11 @@
   "svn.config.sourceControl.changesLeftClick.description": "Set left click functionality on changes resource state",
   "svn.config.sourceControl.combineExternalIfSameServer.description": "Combine the svn external in the main if is from the same server.",
   "svn.config.sourceControl.countUnversioned.description": "Allow to count unversioned files in status count",
+  "svn.config.sourceControl.expandUnversioned.description": "List the files inside an unversioned directory instead of showing only the directory. Files that SVN ignores (svn:ignore, svn:global-ignores, global-ignores) are skipped",
   "svn.config.sourceControl.hideUnversioned.description": "Hide unversioned files in Source Control UI",
   "svn.config.sourceControl.ignore.description": "Ignore unversioned files like .gitignore, Configuring this will overlook the default ignore rule",
   "svn.config.sourceControl.ignoreOnCommit.description": "Changelists to ignore on commit",
   "svn.config.sourceControl.ignoreOnStatusCount.description": "Changelists to ignore on status count",
+  "svn.config.sourceControl.unversionedLimit.description": "Maximum number of files listed for one unversioned directory. When the directory contains more files, only the directory itself is shown",
   "svn.config.update.ignoreExternals.description": "Set to ignore externals definitions on update (add --ignore-externals)"
 }

@@ -31,11 +31,7 @@ export function parseSvnExternals(content: string): Promise<ISvnExternal[]> {
       const externals: ISvnExternal[] = [];
 
       for (const target of targets) {
-        const properties = target.property
-          ? Array.isArray(target.property)
-            ? target.property
-            : [target.property]
-          : [];
+        const properties = asArray(target.property);
 
         for (const property of properties) {
           if (property.name !== "svn:externals") {
@@ -72,6 +68,60 @@ function parseExternalLine(line: string): ISvnExternal {
     revision: match[2],
     path: match[3].trim()
   };
+}
+
+/**
+ * Parse `svn propget <name> --xml` output into the patterns set on each target.
+ *
+ * Used for `svn:ignore` (which applies to the directory it is set on) and for
+ * `svn:global-ignores` (which applies to every descendant as well). Both are
+ * whitespace separated glob lists. `inherited_property` elements are included
+ * so `--show-inherited-props` output works too.
+ */
+export function parseIgnoreProperties(
+  content: string,
+  propertyName: string
+): Promise<Array<{ path: string; patterns: string[] }>> {
+  return new Promise(resolve => {
+    xml2js.parseString(content, xml2jsParseSettings, (err, result) => {
+      const targets = getPropertiesTargets(err, result);
+
+      if (!targets) {
+        resolve([]);
+        return;
+      }
+
+      const rules: Array<{ path: string; patterns: string[] }> = [];
+
+      for (const target of targets) {
+        // `xml2jsParseSettings` runs `camelcase`, which only rewrites hyphens,
+        // so `inherited_property` keeps its underscore.
+        const properties = [
+          ...asArray(target.property),
+          ...asArray(target.inherited_property),
+          ...asArray(target.inheritedProperty)
+        ];
+
+        const patterns: string[] = [];
+
+        for (const property of properties) {
+          if (property.name !== propertyName) {
+            continue;
+          }
+
+          patterns.push(
+            ...propertyValue(property).split(/\s+/).filter(Boolean)
+          );
+        }
+
+        if (patterns.length > 0) {
+          rules.push({ path: String(target.path ?? ""), patterns });
+        }
+      }
+
+      resolve(rules);
+    });
+  });
 }
 
 /**
@@ -143,4 +193,13 @@ function getPropertiesTargets(err: any, result: any): any[] | undefined {
   }
 
   return Array.isArray(target) ? target : [target];
+}
+
+/** xml2js returns a single element instead of an array when there is one. */
+function asArray<T>(value: T | T[] | undefined): T[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
 }

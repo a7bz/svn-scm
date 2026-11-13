@@ -54,6 +54,18 @@ suggests enabling them. Detected candidates appear under
 **Other SVN repositories** in the SVN activity bar; use
 `SVN: Enable sub-repositories detection` to open them all at once.
 
+### Unversioned Folders Listed File by File
+
+`svn status` reports an unversioned folder as a single `?` entry and never looks
+inside it, so the Source Control view used to show one opaque folder. Like the
+built-in Git extension with untracked files, this fork walks the folder and
+lists every file, skipping everything SVN would ignore (`svn:ignore`,
+`svn:global-ignores` and the `global-ignores` patterns from your SVN `config`).
+Adding one of those files works directly: the missing parent folders are added
+along with it. Folders with too many files fall back to a single entry,
+controlled by `svn.sourceControl.expandUnversioned` and
+`svn.sourceControl.unversionedLimit`.
+
 ---
 
 ### Checkout
@@ -273,6 +285,9 @@ Here are all of the extension settings with their default values. To change any 
   // Allow to count unversioned files in status count
   "svn.sourceControl.countUnversioned": true,
 
+  // List the files inside an unversioned directory instead of showing only the directory. Files that SVN ignores (svn:ignore, svn:global-ignores, global-ignores) are skipped
+  "svn.sourceControl.expandUnversioned": true,
+
   // Hide unversioned files in Source Control UI
   "svn.sourceControl.hideUnversioned": null,
 
@@ -284,6 +299,9 @@ Here are all of the extension settings with their default values. To change any 
 
   // Changelists to ignore on status count
   "svn.sourceControl.ignoreOnStatusCount": ["ignore-on-commit"],
+
+  // Maximum number of files listed for one unversioned directory. When the directory contains more files, only the directory itself is shown
+  "svn.sourceControl.unversionedLimit": 1000,
 
   // Set to ignore externals definitions on update (add --ignore-externals)
   "svn.update.ignoreExternals": true

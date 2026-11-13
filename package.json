@@ -1693,6 +1693,11 @@
           "description": "%svn.config.sourceControl.countUnversioned.description%",
           "default": true
         },
+        "svn.sourceControl.expandUnversioned": {
+          "type": "boolean",
+          "description": "%svn.config.sourceControl.expandUnversioned.description%",
+          "default": true
+        },
         "svn.sourceControl.hideUnversioned": {
           "type": "boolean",
           "description": "%svn.config.sourceControl.hideUnversioned.description%",
@@ -1725,6 +1730,11 @@
           "default": [
             "ignore-on-commit"
           ]
+        },
+        "svn.sourceControl.unversionedLimit": {
+          "type": "number",
+          "description": "%svn.config.sourceControl.unversionedLimit.description%",
+          "default": 1000
         },
         "svn.update.ignoreExternals": {
           "type": "boolean",

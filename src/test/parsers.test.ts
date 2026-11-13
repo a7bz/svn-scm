@@ -1,6 +1,10 @@
 import * as assert from "assert";
 import { parseSvnBlame } from "../parser/blameParser";
-import { parseSvnExternals, parseSvnProplist } from "../parser/propertyParser";
+import {
+  parseIgnoreProperties,
+  parseSvnExternals,
+  parseSvnProplist
+} from "../parser/propertyParser";
 import { parseStatusXml } from "../parser/statusParser";
 
 // `svn blame --xml` wraps everything in a `<blame>` root element, while the
@@ -54,6 +58,45 @@ suite("SVN XML parsers", () => {
       assert.deepStrictEqual(props, [
         { name: "svn:mime-type", value: "text/plain" },
         { name: "svn:needs-lock", value: "" }
+      ]);
+    });
+  });
+
+  suite("parseIgnoreProperties", () => {
+    test("reads inherited properties", async () => {
+      // `xml2jsParseSettings` runs `camelcase`, which only rewrites hyphens, so
+      // the tag stays `inherited_property`. A regression here silently dropped
+      // every `svn:global-ignores` rule inherited from above the working copy.
+      const rules = await parseIgnoreProperties(
+        `<?xml version="1.0"?>
+<properties>
+<target path="file:///repo">
+<inherited_property name="svn:global-ignores">*.tmp *.bak</inherited_property>
+</target>
+</properties>`,
+        "svn:global-ignores"
+      );
+
+      assert.deepStrictEqual(rules, [
+        { path: "file:///repo", patterns: ["*.tmp", "*.bak"] }
+      ]);
+    });
+
+    test("reads directory properties and ignores other names", async () => {
+      const rules = await parseIgnoreProperties(
+        `<?xml version="1.0"?>
+<properties>
+<target path="dir">
+<property name="svn:ignore">*.log
+build</property>
+<property name="svn:global-ignores">*.tmp</property>
+</target>
+</properties>`,
+        "svn:ignore"
+      );
+
+      assert.deepStrictEqual(rules, [
+        { path: "dir", patterns: ["*.log", "build"] }
       ]);
     });
   });

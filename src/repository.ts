@@ -19,6 +19,7 @@ import {
 import {
   IAuth,
   IFileStatus,
+  IIgnoreRule,
   IOperations,
   ISvnBlameLine,
   ISvnExternal,
@@ -35,7 +36,7 @@ import {
   ISvnListItem
 } from "./common/types";
 import { debounce, memoize, sequentialize, throttle } from "./decorators";
-import { exists } from "./fs";
+import { exists, lstat } from "./fs";
 import { configuration } from "./helpers/configuration";
 import OperationsImpl from "./operationsImpl";
 import { PathNormalizer } from "./pathNormalizer";
@@ -45,6 +46,11 @@ import { StatusBarCommands } from "./statusbar/statusBarCommands";
 import { svnErrorCodes } from "./svn";
 import { Repository as BaseRepository } from "./svnRepository";
 import { toSvnUri } from "./uri";
+import {
+  createIgnoreMatcher,
+  expandUnversionedDirectory,
+  getGlobalIgnorePatterns
+} from "./unversioned";
 import {
   anyEvent,
   dispose,
@@ -66,6 +72,10 @@ const IDLE_WAIT_TIMEOUT = 10000;
 // not starve the Source Control view (a plain debounce did exactly that).
 const REFRESH_DEBOUNCE = 300;
 const REFRESH_MAX_DELAY = 2000;
+
+// `svn:ignore` / `svn:global-ignores` change rarely, but reading them costs two
+// `svn propget` calls. They are cached and invalidated on `.svn` events.
+const IGNORE_RULES_TTL = 30000;
 
 function shouldShowProgress(operation: Operation): boolean {
   switch (operation) {
@@ -101,6 +111,7 @@ export class Repository implements IRemoteRepository {
   private refreshPending = false;
   private refreshPendingIncludeIgnored = false;
   private refreshInFlight = false;
+  private ignoreRules?: { rules: IIgnoreRule[]; loadedAt: number };
   private deletedUris: Uri[] = [];
   private canSaveAuth: boolean = false;
 
@@ -220,6 +231,9 @@ export class Repository implements IRemoteRepository {
     this._fsWatcher.onDidWorkspaceAny(this.onFSChange, this, this.disposables);
     this._fsWatcher.onDidSvnAny(
       async (e: Uri) => {
+        // `svn:ignore` / `svn:global-ignores` and the working copy database
+        // change here, so the cached ignore rules are stale now.
+        this.invalidateIgnoreRulesCache();
         // Metadata-only operations (`svn add`, `svn commit`, `svn revert`,
         // property/changelist changes, ...) do not touch the working files, so
         // they may only produce `.svn` events. Refresh the status as well as
@@ -793,6 +807,28 @@ export class Repository implements IRemoteRepository {
 
     const ignoreList = configuration.get<string[]>("sourceControl.ignore");
 
+    // Expanding an unversioned directory costs a file system walk, so it can be
+    // turned off. The rules that SVN itself would apply (`svn:ignore`,
+    // `svn:global-ignores` and `miscellany:global-ignores`) are only loaded
+    // when an unversioned directory is actually found, because reading them
+    // costs two extra `svn propget` runs.
+    const expandUnversioned = configuration.get<boolean>(
+      "sourceControl.expandUnversioned",
+      true
+    );
+
+    let ignoreMatcher: ((relativePath: string) => boolean) | undefined;
+
+    const getIgnoreMatcher = async (): Promise<
+      (relativePath: string) => boolean
+    > => {
+      if (!ignoreMatcher) {
+        ignoreMatcher = createIgnoreMatcher(await this.getIgnoreRules());
+      }
+
+      return ignoreMatcher;
+    };
+
     for (const status of statusesRepository) {
       if (status.path === ".") {
         this.isIncomplete = status.status === Status.INCOMPLETE;
@@ -882,7 +918,53 @@ export class Repository implements IRemoteRepository {
         ) {
           continue;
         }
-        unversioned.push(resource);
+
+        // `svn status` reports an unversioned directory as one entry and never
+        // descends into it (`--depth=infinity` does not help). Expand it here
+        // so the individual files show up, like the Git extension shows
+        // untracked files, instead of a single opaque folder.
+        //
+        // The directory entry itself is dropped once its files are listed: Git
+        // does the same, and keeping both would duplicate every path. When the
+        // expansion yields nothing (empty directory, everything ignored, walk
+        // aborted) the directory is kept so it stays visible and addable.
+        const expanded = expandUnversioned
+          ? await this.expandUnversioned(status.path, await getIgnoreMatcher())
+          : [];
+
+        let listed = 0;
+
+        for (const file of expanded) {
+          // The expanded entries must obey the same filters as a normal status
+          // entry, otherwise `files.exclude` and `svn.sourceControl.ignore`
+          // would only apply to the folder.
+          if (matchAll(file, excludeList, { dot: true })) {
+            continue;
+          }
+
+          if (
+            ignoreList.length > 0 &&
+            matchAll(path.sep + file, ignoreList, {
+              dot: true,
+              matchBase: true
+            })
+          ) {
+            continue;
+          }
+
+          unversioned.push(
+            new Resource(
+              Uri.file(path.join(this.workspaceRoot, file)),
+              Status.UNVERSIONED
+            )
+          );
+
+          listed++;
+        }
+
+        if (listed === 0) {
+          unversioned.push(resource);
+        }
       } else if (status.changelist) {
         let changelist = changelists.get(status.changelist);
         if (!changelist) {
@@ -997,6 +1079,88 @@ export class Repository implements IRemoteRepository {
     }
 
     return Promise.resolve();
+  }
+
+  /**
+   * Return the effective ignore rules, cached for {@link IGNORE_RULES_TTL}.
+   *
+   * Both `svn propget -R` calls are cheap for a normal working copy but not
+   * free, and the rules only change on `propset`/`commit`/`update`, all of
+   * which touch `.svn` and therefore invalidate the cache.
+   */
+  private async getIgnoreRules(): Promise<IIgnoreRule[]> {
+    const now = Date.now();
+
+    if (
+      this.ignoreRules &&
+      now - this.ignoreRules.loadedAt < IGNORE_RULES_TTL
+    ) {
+      return this.ignoreRules.rules;
+    }
+
+    try {
+      const rules = await this.repository.getIgnoreRules();
+
+      // `miscellany:global-ignores` (SVN's own configuration file, falling
+      // back to SVN's built-in defaults) applies to the whole working copy,
+      // exactly like `svn status` does.
+      const globalIgnores = await getGlobalIgnorePatterns();
+
+      if (globalIgnores.length > 0) {
+        rules.push({ path: ".", patterns: globalIgnores, recursive: true });
+      }
+
+      this.ignoreRules = { rules, loadedAt: now };
+
+      return rules;
+    } catch (error) {
+      console.error(error);
+      return this.ignoreRules ? this.ignoreRules.rules : [];
+    }
+  }
+
+  /**
+   * List the files below an unversioned directory, skipping everything SVN
+   * would ignore.
+   *
+   * When the walk is incomplete (too many files, a nested working copy, an
+   * unreadable folder) an empty list is returned and the caller keeps the
+   * directory entry, which is what the previous behaviour was.
+   */
+  private async expandUnversioned(
+    relativeDirectory: string,
+    isIgnored: (relativePath: string) => boolean
+  ): Promise<string[]> {
+    const absolute = path.join(this.workspaceRoot, relativeDirectory);
+
+    // `svn status` reports unversioned files too; only directories need a walk.
+    // `lstat` is used so a symlink to a directory is treated as a file, exactly
+    // like the walker and `svn add` do.
+    try {
+      if (!(await lstat(absolute)).isDirectory()) {
+        return [];
+      }
+    } catch {
+      return [];
+    }
+
+    const limit = configuration.get<number>(
+      "sourceControl.unversionedLimit",
+      1000
+    );
+
+    const result = await expandUnversionedDirectory(
+      this.workspaceRoot,
+      relativeDirectory,
+      { limit, isIgnored }
+    );
+
+    return result.complete ? result.files : [];
+  }
+
+  /** Drop the ignore rule cache (it depends on `.svn` metadata). */
+  private invalidateIgnoreRulesCache(): void {
+    this.ignoreRules = undefined;
   }
 
   public getResourceFromFile(uri: string | Uri): Resource | undefined {
