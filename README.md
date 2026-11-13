@@ -116,7 +116,8 @@ Here are all of the extension settings with their default values. To change any 
 
   // Interval in seconds for the background working copy status check used when
   // file system events are missed (for example changes made by external tools).
-  // Set to 0 to disable. Requires svn.autorefresh
+  // It also runs while the window is unfocused. Set to 0 to disable.
+  // Requires svn.autorefresh
   "svn.refresh.pollInterval": 30,
 
   // Show the "Blame (Annotate)" command in menus and the command palette

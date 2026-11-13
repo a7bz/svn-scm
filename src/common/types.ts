@@ -276,6 +276,12 @@ export interface ICpOptions extends SpawnOptions {
   onStdout?: (chunk: Buffer) => void;
   /** Called to abort the process, e.g. when the user cancels a progress. */
   onCancel?: () => void;
+  /**
+   * Kill the process when it runs longer than this many milliseconds. Used for
+   * background read-only commands (e.g. `svn status`) so a hung process can
+   * never block the automatic refresh forever.
+   */
+  timeout?: number;
 }
 
 export interface ISvnErrorData {

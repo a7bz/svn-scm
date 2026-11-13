@@ -42,6 +42,12 @@ import {
 import { matchAll } from "./util/globMatch";
 import { parseDiffXml } from "./parser/diffParser";
 
+// `svn status` runs in the background (poll, file watcher, window focus). A
+// hung process (network drive, server stall) would otherwise keep the refresh
+// scheduler busy forever, so give it a generous upper bound.
+const LOCAL_STATUS_TIMEOUT = 2 * 60 * 1000;
+const REMOTE_STATUS_TIMEOUT = 5 * 60 * 1000;
+
 export class Repository {
   private _infoCache: {
     [index: string]: ISvnInfo;
@@ -137,7 +143,11 @@ export class Repository {
       args.push("--show-updates");
     }
 
-    const result = await this.exec(args);
+    const result = await this.exec(args, {
+      timeout: params.checkRemoteChanges
+        ? REMOTE_STATUS_TIMEOUT
+        : LOCAL_STATUS_TIMEOUT
+    });
 
     const status: IFileStatus[] = await parseStatusXml(result.stdout);
 

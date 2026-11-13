@@ -136,7 +136,7 @@
   "svn.config.subRepositories.detectedDismissed.description": "Whether the 'sub-folders with SVN repositories' notification has been dismissed.",
   "svn.config.path.description": "Path to the svn executable",
   "svn.config.previousCommitsUser.description": "Only show previous commits for a given user. Requires svn >= 1.8",
-  "svn.config.refresh.pollInterval.description": "Interval in seconds for the background working copy status check used when file system events are missed (for example changes made by external tools). Set to 0 to disable. Requires svn.autorefresh",
+  "svn.config.refresh.pollInterval.description": "Interval in seconds for the background working copy status check used when file system events are missed (for example changes made by external tools). It also runs while the window is unfocused. Set to 0 to disable. Requires svn.autorefresh",
   "svn.config.refresh.remoteChanges.description": "Refresh remote changes on refresh command",
   "svn.config.remoteChanges.checkFrequency.description": "Set the interval in seconds to check changed files on remote repository and show in statusbar. 0 to disable",
   "svn.config.showOutput.description": "Show the output window when the extension starts",

@@ -136,7 +136,7 @@
   "svn.config.subRepositories.detectedDismissed.description": "'包含 SVN 仓库的子文件夹'通知是否已关闭。",
   "svn.config.path.description": "svn 可执行文件路径",
   "svn.config.previousCommitsUser.description": "仅显示指定用户的先前提交。需要 svn >= 1.8",
-  "svn.config.refresh.pollInterval.description": "后台检查工作副本状态的间隔秒数，用于补偿文件系统事件丢失（例如外部工具产生的更改）。0 表示禁用。需要开启 svn.autorefresh",
+  "svn.config.refresh.pollInterval.description": "后台检查工作副本状态的间隔秒数，用于补偿文件系统事件丢失（例如外部工具产生的更改）。窗口失去焦点时也会运行。0 表示禁用。需要开启 svn.autorefresh",
   "svn.config.refresh.remoteChanges.description": "执行刷新命令时刷新远程更改",
   "svn.config.remoteChanges.checkFrequency.description": "设置检查远程仓库更改文件并在状态栏中显示的间隔秒数。0 表示禁用",
   "svn.config.showOutput.description": "扩展启动时显示输出窗口",

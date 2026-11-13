@@ -207,15 +207,51 @@ always match the committed revision.
   so the Source Control view stayed stale until the window was reloaded.
 - The watcher now covers both the working copy root and the opened workspace
   folder, and a new `svn.refresh.pollInterval` (default 30 s, `0` disables) runs
-  a local `svn status` in the background while the window is focused and the
-  repository is idle. This is a safety net for missed events; it does not check
-  the server.
+  a local `svn status` in the background. This is a safety net for missed
+  events; it does not check the server. See section 10 for the follow-up work
+  that removed the remaining blind spots.
 - The remote check (`svn status --show-updates`) no longer starts while another
   `svn` command is running, and when it fails (offline, VPN down, auth error) a
   local-only status is run instead, so local changes still appear in the view.
 - The Update command now includes the real SVN error text (instead of a bare
   "Unable to update") and offers a one-click `svn cleanup` when the working copy
   is locked.
+
+### 10. Remaining change-detection blind spots
+- Metadata-only operations (`svn add`, `svn commit`, `svn revert`, property and
+  changelist changes) may only touch `.svn`. The `.svn` watcher path used to
+  refresh `svn info` only, so the Source Control view could stay stale until the
+  next poll or window focus. It now requests a working copy status as well.
+- The status poll no longer requires the window to be focused, so changes made
+  by terminals, build tools and AI agents while VS Code is in the background are
+  picked up. Per-repository jitter avoids several repositories running
+  `svn status` at the same instant.
+- Refresh requests are coalesced with a 300 ms debounce but a maximum delay of
+  2 s: a process that keeps writing files can no longer starve the refresh
+  indefinitely (the old plain debounce reset on every event).
+- `updateModelState` is serialized per repository instead of globally, so a slow
+  working copy no longer blocks the Source Control view of other repositories.
+- Routine refreshes no longer pass `--no-ignore`; ignored entries are only
+  collected by full refreshes (startup, manual refresh, after write operations)
+  and are used by the sub-repository discovery scan.
+- `svn status` now has a process timeout (2 min local, 5 min remote). A hung
+  process on a network drive is killed instead of blocking the refresh scheduler
+  forever.
+- A repository lock (`svn lock`) is no longer confused with a locked working
+  copy (`wc-locked`). Modified files that are only locked in the repository stay
+  in the "Changes" group; `wc-locked` still triggers the cleanup hint.
+- The `.svn` metadata directory is now watched with a dedicated `fs.watch` for
+  every working copy, mirroring how the built-in Git extension always watches
+  `.git`. This also covers working copies inside the workspace whose metadata
+  directory is excluded from `files.watcherExclude`, and network drives where
+  the recursive VS Code watcher is unreliable. Transient SQLite files
+  (`wc.db-journal`, `wc.db-wal`, `wc.db-shm`, `tmp`) are ignored to avoid
+  refresh loops.
+- Watcher errors (`fs.watch` on a network path, ENOSPC, permissions) are logged
+  instead of crashing the extension host.
+- The full analysis and the remaining optional improvements (refresh
+  diagnostics, deep content verification for mtime-preserving changes, adaptive
+  polling) are documented in `doc/change-detection-robustness.md`.
 
 ## Changed Behaviors
 

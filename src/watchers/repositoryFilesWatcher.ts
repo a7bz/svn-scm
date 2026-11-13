@@ -2,15 +2,14 @@ import { Event, Uri, workspace, EventEmitter, RelativePattern } from "vscode";
 import { watch } from "fs";
 import { exists } from "../fs";
 import { join } from "path";
-import { debounce } from "../decorators";
 import {
   anyEvent,
   filterEvent,
   IDisposable,
-  isDescendant,
   fixPathSeparator,
   getSvnDir,
-  normalizePath
+  normalizePath,
+  toDisposable
 } from "../util";
 
 export class RepositoryFilesWatcher implements IDisposable {
@@ -61,23 +60,29 @@ export class RepositoryFilesWatcher implements IDisposable {
     let onRepoCreate: Event<Uri> | undefined;
     let onRepoDelete: Event<Uri> | undefined;
 
-    if (
-      typeof workspace.workspaceFolders !== "undefined" &&
-      !workspace.workspaceFolders.filter(w => isDescendant(w.uri.fsPath, root))
-        .length
-    ) {
+    // Watch the metadata directory directly, exactly like VS Code's Git
+    // extension watches `.git`. The recursive VS Code watcher already covers
+    // `.svn` when the working copy is inside the workspace, but it can be
+    // excluded through `files.watcherExclude` and is unreliable on network
+    // drives. A dedicated `fs.watch` keeps external `svn add/commit/revert`
+    // visible in those setups; if it fails, the VS Code watcher remains as a
+    // fallback and the periodic status poll is the final safety net.
+    try {
       const repoWatcher = watch(
         join(root, getSvnDir()),
         this.repoWatch.bind(this)
       );
 
-      repoWatcher.on("error", error => {
-        throw error;
-      });
+      // A watcher error (network drive, permissions, ENOSPC, ...) must not
+      // crash the extension host.
+      repoWatcher.on("error", error => console.error(error));
+      this.disposables.push(toDisposable(() => repoWatcher.close()));
 
       onRepoChange = this._onRepoChange.event;
       onRepoCreate = this._onRepoCreate.event;
       onRepoDelete = this._onRepoDelete.event;
+    } catch (error) {
+      console.error(error);
     }
 
     this.disposables.push(...fsWatchers);
@@ -134,16 +139,25 @@ export class RepositoryFilesWatcher implements IDisposable {
     );
   }
 
-  @debounce(1000)
-  private repoWatch(event: string, filename: string): void {
+  private repoWatch(event: string, filename: string | null): void {
+    // SQLite creates these transient files while writing the working copy
+    // database. Reacting to them would only cause refresh loops; `wc.db`
+    // itself is written when `svn add/commit/revert/propset` completes.
+    if (filename && /^(wc\.db-(journal|wal|shm)|tmp)$/.test(filename)) {
+      return;
+    }
+
+    const svnDir = join(this.root, getSvnDir());
+    const uri = filename ? Uri.file(join(svnDir, filename)) : Uri.file(svnDir);
+
     if (event === "change") {
-      this._onRepoChange.fire(Uri.parse(filename));
+      this._onRepoChange.fire(uri);
     } else if (event === "rename") {
-      exists(filename).then(doesExist => {
+      exists(uri.fsPath).then(doesExist => {
         if (doesExist) {
-          this._onRepoCreate.fire(Uri.parse(filename));
+          this._onRepoCreate.fire(uri);
         } else {
-          this._onRepoDelete.fire(Uri.parse(filename));
+          this._onRepoDelete.fire(uri);
         }
       });
     }

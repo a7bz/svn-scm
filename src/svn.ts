@@ -137,6 +137,27 @@ function runSvn(
 
   const disposables: IDisposable[] = [];
 
+  let timedOut = false;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+
+  if (options.timeout && options.timeout > 0) {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      try {
+        child.kill();
+      } catch {
+        // Process already gone.
+      }
+    }, options.timeout);
+  }
+
+  const clearTimeoutHandle = () => {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = undefined;
+    }
+  };
+
   const once = (
     ee: NodeJS.EventEmitter,
     name: string,
@@ -202,13 +223,29 @@ function runSvn(
 
   return result
     .then(([exitCode, stdout, stderr]) => {
-      dispose(disposables);
+      if (timedOut) {
+        throw new SvnError({
+          message: `svn ${args[0] || ""} timed out after ${options.timeout} ms`,
+          exitCode,
+          stderr,
+          svnCommand: args[0]
+        });
+      }
+
       return { exitCode, stdout, stderr, child };
     })
-    .catch(err => {
-      dispose(disposables);
-      throw err;
-    });
+    .then(
+      result => {
+        clearTimeoutHandle();
+        dispose(disposables);
+        return result;
+      },
+      err => {
+        clearTimeoutHandle();
+        dispose(disposables);
+        throw err;
+      }
+    );
 }
 
 /** Writes stderr to the output channel when logging is enabled. */

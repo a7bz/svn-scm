@@ -1,5 +1,5 @@
 import * as path from "path";
-import { clearInterval, setInterval } from "timers";
+import { clearTimeout, setTimeout } from "timers";
 import {
   l10n,
   commands,
@@ -34,7 +34,7 @@ import {
   IStoredAuth,
   ISvnListItem
 } from "./common/types";
-import { debounce, globalSequentialize, memoize, throttle } from "./decorators";
+import { debounce, memoize, sequentialize, throttle } from "./decorators";
 import { exists } from "./fs";
 import { configuration } from "./helpers/configuration";
 import OperationsImpl from "./operationsImpl";
@@ -60,6 +60,12 @@ import { RepositoryFilesWatcher } from "./watchers/repositoryFilesWatcher";
 // Upper bound for waiting on a busy repository before refreshing anyway.
 // Long running (or stuck) commands must never freeze the auto refresh.
 const IDLE_WAIT_TIMEOUT = 10000;
+
+// Coalesce bursts of file system events, but never postpone a refresh longer
+// than the maximum delay: a build/watch process that keeps writing files must
+// not starve the Source Control view (a plain debounce did exactly that).
+const REFRESH_DEBOUNCE = 300;
+const REFRESH_MAX_DELAY = 2000;
 
 function shouldShowProgress(operation: Operation): boolean {
   switch (operation) {
@@ -88,8 +94,13 @@ export class Repository implements IRemoteRepository {
   public remoteChangedFiles: number = 0;
   public isIncomplete: boolean = false;
   public needCleanUp: boolean = false;
-  private remoteChangedUpdateInterval?: NodeJS.Timer;
-  private statusPollInterval?: NodeJS.Timer;
+  private remoteChangedUpdateInterval?: NodeJS.Timeout;
+  private statusPollTimeout?: NodeJS.Timeout;
+  private refreshDebounceTimer?: NodeJS.Timeout;
+  private refreshMaxTimer?: NodeJS.Timeout;
+  private refreshPending = false;
+  private refreshPendingIncludeIgnored = false;
+  private refreshInFlight = false;
   private deletedUris: Uri[] = [];
   private canSaveAuth: boolean = false;
 
@@ -203,10 +214,21 @@ export class Repository implements IRemoteRepository {
     );
     this.disposables.push(this._fsWatcher);
 
-    this._fsWatcher.onDidAny(this.onFSChange, this, this.disposables);
+    // Working tree changes only; `.svn` metadata changes are handled by
+    // `onDidSvnAny` below (same split as VS Code's Git extension, which
+    // filters `.git` out of the working tree watcher).
+    this._fsWatcher.onDidWorkspaceAny(this.onFSChange, this, this.disposables);
     this._fsWatcher.onDidSvnAny(
       async (e: Uri) => {
+        // Metadata-only operations (`svn add`, `svn commit`, `svn revert`,
+        // property/changelist changes, ...) do not touch the working files, so
+        // they may only produce `.svn` events. Refresh the status as well as
+        // the repository info; otherwise such changes stay invisible until the
+        // next poll or window focus.
         await this.onDidAnyFileChanged(e);
+        // A fast status is enough here; the periodic poll performs the full
+        // scan (including ignored entries) and keeps that list fresh.
+        this.requestStatusRefresh();
       },
       this,
       this.disposables
@@ -265,11 +287,19 @@ export class Repository implements IRemoteRepository {
     this.disposables.push(
       toDisposable(() => {
         if (this.remoteChangedUpdateInterval) {
-          clearInterval(this.remoteChangedUpdateInterval);
+          clearTimeout(this.remoteChangedUpdateInterval);
         }
 
-        if (this.statusPollInterval) {
-          clearInterval(this.statusPollInterval);
+        if (this.statusPollTimeout) {
+          clearTimeout(this.statusPollTimeout);
+        }
+
+        if (this.refreshDebounceTimer) {
+          clearTimeout(this.refreshDebounceTimer);
+        }
+
+        if (this.refreshMaxTimer) {
+          clearTimeout(this.refreshMaxTimer);
         }
       })
     );
@@ -298,10 +328,6 @@ export class Repository implements IRemoteRepository {
     this.disposables.push(
       configuration.onDidChange(e => {
         if (e.affectsConfiguration("svn.remoteChanges.checkFrequency")) {
-          if (this.remoteChangedUpdateInterval) {
-            clearInterval(this.remoteChangedUpdateInterval);
-          }
-
           this.createRemoteChangedInterval();
 
           this.refreshRemoteChanges();
@@ -311,11 +337,6 @@ export class Repository implements IRemoteRepository {
           e.affectsConfiguration("svn.autorefresh") ||
           e.affectsConfiguration("svn.refresh.pollInterval")
         ) {
-          if (this.statusPollInterval) {
-            clearInterval(this.statusPollInterval);
-            this.statusPollInterval = undefined;
-          }
-
           this.createStatusPollInterval();
         }
       })
@@ -329,12 +350,12 @@ export class Repository implements IRemoteRepository {
       window.onDidChangeWindowState(e => {
         if (e.focused) {
           this.refreshRemoteChanges();
-          this.eventuallyUpdateWhenIdleAndWait();
+          this.requestStatusRefresh();
         }
       })
     );
 
-    this.status();
+    this.status().catch(error => console.error(error));
 
     this.disposables.push(
       workspace.onDidSaveTextDocument(document => {
@@ -345,11 +366,24 @@ export class Repository implements IRemoteRepository {
 
   @debounce(1000)
   private async onDidAnyFileChanged(e: Uri) {
-    await this.repository.updateInfo();
+    try {
+      await this.repository.updateInfo();
+    } catch (error) {
+      // A concurrent `svn` command (or a working copy lock) can make `svn info`
+      // fail temporarily. The status refresh that follows will report the
+      // current state, so do not turn this into an unhandled rejection.
+      console.error(error);
+    }
+
     this._onDidChangeRepository.fire(e);
   }
 
   private createRemoteChangedInterval() {
+    if (this.remoteChangedUpdateInterval) {
+      clearTimeout(this.remoteChangedUpdateInterval);
+      this.remoteChangedUpdateInterval = undefined;
+    }
+
     const updateFreq = configuration.get<number>(
       "remoteChanges.checkFrequency",
       300
@@ -359,9 +393,26 @@ export class Repository implements IRemoteRepository {
       return;
     }
 
-    this.remoteChangedUpdateInterval = setInterval(() => {
+    const base = Math.max(1000, Math.floor(updateFreq * 1000));
+
+    const scheduleNext = () => {
+      if (this.state === RepositoryState.Disposed) {
+        return;
+      }
+
       this.refreshRemoteChanges();
-    }, 1000 * updateFreq);
+
+      // Jitter keeps several repositories from hitting the server at the same
+      // moment.
+      const jitter = Math.floor(Math.random() * Math.min(base, 10000));
+      this.remoteChangedUpdateInterval = setTimeout(
+        scheduleNext,
+        base + jitter
+      );
+    };
+
+    const jitter = Math.floor(Math.random() * Math.min(base, 10000));
+    this.remoteChangedUpdateInterval = setTimeout(scheduleNext, base + jitter);
   }
 
   /**
@@ -370,16 +421,23 @@ export class Repository implements IRemoteRepository {
    * The extension detects local changes through VS Code's file watcher. That
    * watcher does not see everything: changes written by another process (AI
    * coding agents, terminals, build tools), working copies on network drives,
-   * excluded paths or workspaces where VS Code had to disable watching are
-   * silently missed. When that happens the Source Control view stays stale
-   * until the window is reloaded.
+   * excluded paths, workspaces where VS Code had to disable watching or an
+   * event lost under heavy churn are silently missed. Polling the working copy
+   * directly makes the view eventually consistent even when no watcher event
+   * arrives.
    *
-   * Polling the working copy directly makes the view eventually consistent
-   * even when no watcher event arrives. It only runs while the window is
-   * focused and while the repository is idle, so it never overlaps another
-   * `svn` process and costs nothing while VS Code is in the background.
+   * The poll deliberately does not require the window to be focused: changes
+   * are frequently made by a terminal/agent while VS Code sits in the
+   * background, and waiting for a focus event made those changes invisible
+   * until the user clicked back into the window. It also uses jitter so that
+   * several repositories do not run `svn status` at the same instant.
    */
   private createStatusPollInterval() {
+    if (this.statusPollTimeout) {
+      clearTimeout(this.statusPollTimeout);
+      this.statusPollTimeout = undefined;
+    }
+
     const autorefresh = configuration.get<boolean>("autorefresh", true);
     const interval = configuration.get<number>("refresh.pollInterval", 30);
 
@@ -387,24 +445,120 @@ export class Repository implements IRemoteRepository {
       return;
     }
 
-    this.statusPollInterval = setInterval(() => {
+    const base = Math.max(1000, Math.floor(interval * 1000));
+
+    const scheduleNext = () => {
+      if (this.state === RepositoryState.Disposed) {
+        return;
+      }
+
       if (!configuration.get<boolean>("autorefresh", true)) {
         return;
       }
 
-      if (this.state !== RepositoryState.Idle) {
-        return;
-      }
+      // `requestStatusRefresh` coalesces with watcher events and waits for a
+      // running operation (with a bounded timeout), so the poll can never
+      // overlap another `svn` command indefinitely. The periodic run is also
+      // the one that refreshes the ignored list used for sub-repository
+      // discovery.
+      this.requestStatusRefresh(true);
 
-      // Do not start a status while another command (or the previous poll) is
-      // still running on the same working copy.
-      if (!this.operations.isIdle() || !window.state.focused) {
-        return;
-      }
+      const jitter = Math.floor(Math.random() * Math.min(base, 5000));
+      this.statusPollTimeout = setTimeout(scheduleNext, base + jitter);
+    };
 
-      // No progress indicator for a background refresh.
-      this.status(false).catch(error => console.error(error));
-    }, 1000 * interval);
+    // Spread the first run of all repositories over one interval.
+    const jitter = Math.floor(Math.random() * Math.min(base, 5000));
+    this.statusPollTimeout = setTimeout(scheduleNext, base + jitter);
+  }
+
+  /**
+   * Request a local working copy refresh.
+   *
+   * Events are coalesced with a short debounce, but a refresh is guaranteed to
+   * start within {@link REFRESH_MAX_DELAY} even while events keep arriving
+   * (build watchers, log files, ...). Only one refresh runs at a time; events
+   * received during a refresh trigger exactly one follow-up run, so the final
+   * state on disk is always reflected.
+   */
+  private requestStatusRefresh(includeIgnored: boolean = false): void {
+    if (this.state === RepositoryState.Disposed) {
+      return;
+    }
+
+    // `svn.autorefresh` is the master switch for every automatic status
+    // refresh (file events, `.svn` metadata events, poll and focus).
+    if (!configuration.get<boolean>("autorefresh", true)) {
+      return;
+    }
+
+    this.refreshPending = true;
+    // A full request wins over a fast one: the ignored list is only updated by
+    // a full status and must not be skipped just because a file event arrived
+    // in the same window.
+    this.refreshPendingIncludeIgnored =
+      this.refreshPendingIncludeIgnored || includeIgnored;
+
+    if (this.refreshDebounceTimer) {
+      clearTimeout(this.refreshDebounceTimer);
+    }
+
+    this.refreshDebounceTimer = setTimeout(
+      () => this.runPendingRefresh(),
+      REFRESH_DEBOUNCE
+    );
+
+    if (!this.refreshMaxTimer) {
+      this.refreshMaxTimer = setTimeout(
+        () => this.runPendingRefresh(),
+        REFRESH_MAX_DELAY
+      );
+    }
+  }
+
+  private runPendingRefresh(): void {
+    if (this.refreshDebounceTimer) {
+      clearTimeout(this.refreshDebounceTimer);
+      this.refreshDebounceTimer = undefined;
+    }
+
+    if (this.refreshMaxTimer) {
+      clearTimeout(this.refreshMaxTimer);
+      this.refreshMaxTimer = undefined;
+    }
+
+    if (!this.refreshPending || this.refreshInFlight) {
+      return;
+    }
+
+    const includeIgnored = this.refreshPendingIncludeIgnored;
+
+    this.refreshPending = false;
+    this.refreshPendingIncludeIgnored = false;
+    this.refreshInFlight = true;
+
+    this.performStatusRefresh(includeIgnored)
+      .catch(error => console.error(error))
+      .finally(() => {
+        this.refreshInFlight = false;
+
+        if (this.refreshPending) {
+          this.requestStatusRefresh(this.refreshPendingIncludeIgnored);
+        }
+      });
+  }
+
+  private async performStatusRefresh(includeIgnored: boolean): Promise<void> {
+    await this.whenIdle();
+
+    if (this.state === RepositoryState.Disposed) {
+      return;
+    }
+
+    // File-event bursts only need the working copy status; `--no-ignore` is
+    // unnecessary there. The periodic poll requests a full status so ignored
+    // entries stay fresh for the sub-repository discovery scan.
+    await this.status(false, includeIgnored);
   }
 
   /**
@@ -520,7 +674,7 @@ export class Repository implements IRemoteRepository {
         // fall back to a local-only status. Otherwise the Source Control view
         // would stay stale until the window is reloaded.
         try {
-          await this.status(false);
+          await this.status(false, false);
         } catch (localError) {
           console.error(localError);
         }
@@ -541,26 +695,10 @@ export class Repository implements IRemoteRepository {
       return;
     }
 
-    // Do not drop the event while another operation is running. A slow (or
-    // stuck, e.g. waiting for credentials) command used to discard every
-    // subsequent file change, leaving the SCM view stale until the next window
-    // focus event. `updateWhenIdleAndWait` is debounced/throttled and waits for
-    // the repository to become idle (with a bounded timeout) instead.
-    this.eventuallyUpdateWhenIdleAndWait();
-  }
-
-  @debounce(1000)
-  private eventuallyUpdateWhenIdleAndWait(): void {
-    // Background refresh: never let a failed `svn status` (disposed repository,
-    // transient error, ...) become an unhandled rejection.
-    this.updateWhenIdleAndWait().catch(error => console.error(error));
-  }
-
-  @throttle
-  private async updateWhenIdleAndWait(): Promise<void> {
-    await this.whenIdle();
-    await this.status();
-    await timeout(5000);
+    // Never drop an event while another operation is running: the refresh
+    // scheduler waits for the repository to become idle (with a bounded
+    // timeout) and coalesces bursts without starving under continuous writes.
+    this.requestStatusRefresh();
   }
 
   /**
@@ -581,8 +719,11 @@ export class Repository implements IRemoteRepository {
   }
 
   @throttle
-  @globalSequentialize("updateModelState")
-  public async updateModelState(checkRemoteChanges: boolean = false) {
+  @sequentialize
+  public async updateModelState(
+    checkRemoteChanges: boolean = false,
+    includeIgnored: boolean = true
+  ) {
     const changes: any[] = [];
     const unversioned: any[] = [];
     const conflicts: any[] = [];
@@ -590,7 +731,12 @@ export class Repository implements IRemoteRepository {
     const remoteChanges: any[] = [];
 
     this.statusExternal = [];
-    this.statusIgnored = [];
+    // Ignored entries are only needed by the repository discovery scan. A
+    // routine refresh omits them (and the expensive `--no-ignore`) but must
+    // keep the result of the last full scan.
+    if (includeIgnored) {
+      this.statusIgnored = [];
+    }
     this.isIncomplete = false;
     this.needCleanUp = false;
 
@@ -602,7 +748,7 @@ export class Repository implements IRemoteRepository {
     const statuses =
       (await this.retryRun(async () => {
         return this.repository.getStatus({
-          includeIgnored: true,
+          includeIgnored,
           includeExternals: combineExternal,
           checkRemoteChanges
         });
@@ -705,7 +851,9 @@ export class Repository implements IRemoteRepository {
         // Ignore non changed itens
         continue;
       } else if (status.status === Status.IGNORED) {
-        this.statusIgnored.push(status);
+        if (includeIgnored) {
+          this.statusIgnored.push(status);
+        }
       } else if (status.status === Status.CONFLICTED) {
         conflicts.push(resource);
       } else if (status.status === Status.UNVERSIONED) {
@@ -839,7 +987,14 @@ export class Repository implements IRemoteRepository {
 
     this._onDidChangeStatus.fire();
 
-    this.currentBranch = await this.getCurrentBranch();
+    // The resource groups are already up to date; a failure while reading the
+    // branch name (e.g. the working copy is locked by another process) must not
+    // turn an otherwise successful refresh into an error.
+    try {
+      this.currentBranch = await this.getCurrentBranch();
+    } catch (error) {
+      console.error(error);
+    }
 
     return Promise.resolve();
   }
@@ -894,8 +1049,11 @@ export class Repository implements IRemoteRepository {
   }
 
   @throttle
-  public async status(showProgress: boolean = true) {
-    return this.run(Operation.Status, undefined, showProgress);
+  public async status(
+    showProgress: boolean = true,
+    includeIgnored: boolean = true
+  ) {
+    return this.run(Operation.Status, undefined, showProgress, includeIgnored);
   }
 
   public async show(
@@ -1334,7 +1492,8 @@ export class Repository implements IRemoteRepository {
   private async run<T>(
     operation: Operation,
     runOperation: () => Promise<T> = () => Promise.resolve<any>(null),
-    showProgress: boolean = true
+    showProgress: boolean = true,
+    includeIgnored: boolean = true
   ): Promise<T> {
     if (this.state !== RepositoryState.Idle) {
       throw new Error("Repository not initialized");
@@ -1350,7 +1509,7 @@ export class Repository implements IRemoteRepository {
         const checkRemote = operation === Operation.StatusRemote;
 
         if (!isReadOnly(operation)) {
-          await this.updateModelState(checkRemote);
+          await this.updateModelState(checkRemote, includeIgnored);
         }
 
         return result;
