@@ -65,6 +65,7 @@
   "svn.command.revertExplorer.title": "使用 SVN 还原",
   "svn.command.searchLogByRevision.title": "按版本号搜索日志",
   "svn.command.searchLogByText.title": "搜索日志",
+  "svn.command.showOutput.title": "显示输出",
   "svn.command.switchBranch.title": "切换分支",
   "svn.command.treeview.pullIncomingChange.title": "更新所选",
   "svn.command.treeview.refreshProvider.title": "刷新",

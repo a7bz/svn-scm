@@ -73,8 +73,14 @@ server or scans the whole working copy on a timer by default. Local changes are
 refreshed from file system events (plus window focus and `SVN: Refresh`), and
 incoming changes are fetched on demand:
 
-- `SVN: Pull` in the Source Control view's **More Actions** (`...`) menu runs
-  `svn update` and then refreshes the incoming changes list.
+- `SVN: Pull` in the Source Control view's **More Actions** (`...`) menu (and in
+  the repository's own `...` menu) runs `svn update` and then refreshes the
+  incoming changes list.
+- The status bar shows **Pull** and **Refresh Local Status** icons next to the
+  existing **Update Revision** item.
+- The repository's `...` menu also exposes Update, Refresh, Refresh Remote
+  Changes, Commit, Branch, Log, Cleanup, Repository Information, Externals,
+  Show Output and Close.
 - `SVN: Refresh Remote Changes` only fetches incoming changes without updating.
 - To restore the old periodic behavior, set
   `svn.remoteChanges.checkFrequency` (seconds) and/or

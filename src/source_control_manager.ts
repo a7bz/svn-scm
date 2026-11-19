@@ -562,6 +562,17 @@ export class SourceControlManager implements IDisposable {
       return this.openRepositories.find(r => r.repository === hint);
     }
 
+    // Commands contributed to `scm/repository` are invoked with the
+    // SourceControl object of the repository node. Match it by identity so the
+    // repository is not picked again when several working copies are open.
+    const sourceControlRepository = this.openRepositories.find(
+      r => r.repository.sourceControl === hint
+    );
+
+    if (sourceControlRepository) {
+      return sourceControlRepository;
+    }
+
     if ((hint as any).repository instanceof Repository) {
       return this.openRepositories.find(
         r => r.repository === (hint as any).repository

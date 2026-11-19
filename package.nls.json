@@ -65,6 +65,7 @@
   "svn.command.revertExplorer.title": "Revert with SVN",
   "svn.command.searchLogByRevision.title": "Search log by revision",
   "svn.command.searchLogByText.title": "Search log",
+  "svn.command.showOutput.title": "Show Output",
   "svn.command.switchBranch.title": "Switch Branch",
   "svn.command.treeview.pullIncomingChange.title": "Update selected",
   "svn.command.treeview.refreshProvider.title": "Refresh",

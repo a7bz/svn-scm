@@ -145,6 +145,8 @@
   "Properties are only available for working copy files": "Properties are only available for working copy files",
   "Property ": "Property ",
   "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)": "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)",
+  "Pull (Update Revision)": "Pull (Update Revision)",
+  "Refresh Local Status": "Refresh Local Status",
   "Remote Changes": "Remote Changes",
   "Remove changelist of file(s)": "Remove changelist of file(s)",
   "Remove the external '{0}'?": "Remove the external '{0}'?",

@@ -145,6 +145,8 @@
   "Properties are only available for working copy files": "属性功能仅适用于工作副本中的文件",
   "Property ": "属性 ",
   "Provide the revision or range to merge (e.g. 123, 123:456 or 1,2,3)": "请输入要合并的版本号或范围（例如 123、123:456 或 1,2,3）",
+  "Pull (Update Revision)": "拉取（更新版本）",
+  "Refresh Local Status": "刷新本地状态",
   "Remote Changes": "远程更改",
   "Remove changelist of file(s)": "移除文件的变更列表",
   "Remove the external '{0}'?": "确定移除外部引用“{0}”吗？",

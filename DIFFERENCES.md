@@ -294,11 +294,15 @@ always match the committed revision.
   the Refresh command, the same way the built-in Git extension works, so the
   extension no longer runs `svn status` (or `svn status --show-updates`) on a
   timer.
-- Added `SVN: Pull` to the Source Control view's **More Actions** menu. It runs
-  `svn update` and then refreshes the incoming changes list, giving Git-like
-  pull behavior without periodic server requests. `SVN: Refresh Remote Changes`
-  fetches incoming changes without updating and also works when automatic checks
-  are disabled.
+- Added `SVN: Pull` to the Source Control view's **More Actions** menu and to
+  the repository node's `...` menu. It runs `svn update` and then refreshes the
+  incoming changes list, giving Git-like pull behavior without periodic server
+  requests. `SVN: Refresh Remote Changes` fetches incoming changes without
+  updating and also works when automatic checks are disabled.
+- The repository node's `...` menu now exposes the common operations (Pull,
+  Update, Refresh, Refresh Remote Changes, Commit, Branch, Log, Cleanup,
+  Repository Information, Externals, Show Output, Close), and Pull plus
+  Refresh Local Status are available in the status bar next to Update Revision.
 - A failed background status refresh no longer fails the user operation that
   triggered it (`Unable to update: svn stat timed out ...`), and the throttle
   decorator now recovers after a rejected run instead of returning the same

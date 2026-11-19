@@ -1,4 +1,4 @@
-import { Command, Disposable, Event } from "vscode";
+import { l10n, Command, Disposable, Event } from "vscode";
 import { Repository } from "../repository";
 import { anyEvent } from "../util";
 import { CheckoutStatusBar } from "./checkoutStatusBar";
@@ -10,7 +10,7 @@ export class StatusBarCommands {
 
   private disposables: Disposable[] = [];
 
-  constructor(repository: Repository) {
+  constructor(private repository: Repository) {
     this.checkoutStatusBar = new CheckoutStatusBar(repository);
     this.syncStatusBar = new SyncStatusBar(repository);
 
@@ -38,6 +38,23 @@ export class StatusBarCommands {
     if (sync) {
       result.push(sync);
     }
+
+    // Pull and a local-only refresh sit next to the update (sync) item, so the
+    // most frequent remote/local operations are reachable without opening the
+    // Source Control view's More Actions menu.
+    result.push({
+      command: "svn.pull",
+      title: "$(repo-pull)",
+      tooltip: l10n.t("Pull (Update Revision)"),
+      arguments: [this.repository]
+    });
+
+    result.push({
+      command: "svn.refresh",
+      title: "$(refresh)",
+      tooltip: l10n.t("Refresh Local Status"),
+      arguments: [this.repository]
+    });
 
     return result;
   }

@@ -451,6 +451,12 @@
         "category": "%svn.category%"
       },
       {
+        "command": "svn.showOutput",
+        "title": "%svn.command.showOutput.title%",
+        "category": "%svn.category%",
+        "icon": "$(output)"
+      },
+      {
         "command": "svn.switchBranch",
         "title": "%svn.command.switchBranch.title%",
         "category": "%svn.category%"
@@ -831,6 +837,10 @@
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0 && isSvn18orGreater"
         },
         {
+          "command": "svn.showOutput",
+          "when": "config.svn.enabled"
+        },
+        {
           "command": "svn.switchBranch",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
         },
@@ -1077,6 +1087,68 @@
         },
         {
           "command": "svn.createBranchTag",
+          "when": "config.svn.enabled && scmProvider == svn"
+        }
+      ],
+      "scm/repository": [
+        {
+          "command": "svn.pull",
+          "group": "1_header@1",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.update",
+          "group": "1_header@2",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.refresh",
+          "group": "1_header@3",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.refreshRemoteChanges",
+          "group": "1_header@4",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.commitWithMessage",
+          "group": "2_main@1",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "submenu": "svn.branch",
+          "group": "2_main@2",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.log",
+          "group": "2_main@3",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.cleanup",
+          "group": "2_main@4",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.repositoryInfo",
+          "group": "2_main@5",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.manageExternals",
+          "group": "2_main@6",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.showOutput",
+          "group": "3_footer@1",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.close",
+          "group": "3_footer@2",
           "when": "config.svn.enabled && scmProvider == svn"
         }
       ],
