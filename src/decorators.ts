@@ -65,10 +65,15 @@ function _throttle(
     }
 
     if (this[currentKey]) {
-      this[nextKey] = done(this[currentKey]).then(() => {
+      // A failed run must not poison the throttle: `done()` only continues on
+      // success, so a single rejection used to leave a rejected promise in
+      // `nextKey` that every later call returned (no refresh until reload).
+      const runNext = () => {
         this[nextKey] = undefined;
         return trigger.apply(this, args);
-      });
+      };
+
+      this[nextKey] = this[currentKey].then(runNext, runNext);
 
       return this[nextKey];
     }

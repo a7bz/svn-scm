@@ -7,6 +7,6 @@ export class RefreshRemoteChanges extends Command {
   }
 
   public async execute(repository: Repository) {
-    await repository.updateRemoteChangedFiles();
+    await repository.fetchRemoteChanges();
   }
 }

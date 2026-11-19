@@ -58,6 +58,7 @@ import { RevertChange } from "./commands/revertChange";
 import { RevertExplorer } from "./commands/revertExplorer";
 import { SwitchBranch } from "./commands/switchBranch";
 import { Update } from "./commands/update";
+import { Pull } from "./commands/pull";
 import { Upgrade } from "./commands/upgrade";
 import { SourceControlManager } from "./source_control_manager";
 import { SearchLogByRevision } from "./commands/search_log_by_revision";
@@ -92,6 +93,7 @@ export function registerCommands(
   disposables.push(new MergeRevisions());
   disposables.push(new Revert());
   disposables.push(new Update());
+  disposables.push(new Pull());
   disposables.push(new PullIncommingChange());
   disposables.push(new PatchAll());
   disposables.push(new Patch());

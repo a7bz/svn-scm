@@ -400,7 +400,7 @@ export class Repository implements IRemoteRepository {
 
     const updateFreq = configuration.get<number>(
       "remoteChanges.checkFrequency",
-      300
+      0
     );
 
     if (!updateFreq) {
@@ -432,6 +432,12 @@ export class Repository implements IRemoteRepository {
   /**
    * Periodically re-run `svn status` as a safety net.
    *
+   * Disabled by default (`svn.refresh.pollInterval` is 0): like the Git
+   * extension, local changes are detected through file system events (plus the
+   * explicit refresh command and window focus), so no periodic full scan of
+   * the working copy is needed. Users can opt back in for setups where events
+   * are unreliable (network drives, external tools).
+   *
    * The extension detects local changes through VS Code's file watcher. That
    * watcher does not see everything: changes written by another process (AI
    * coding agents, terminals, build tools), working copies on network drives,
@@ -453,7 +459,7 @@ export class Repository implements IRemoteRepository {
     }
 
     const autorefresh = configuration.get<boolean>("autorefresh", true);
-    const interval = configuration.get<number>("refresh.pollInterval", 30);
+    const interval = configuration.get<number>("refresh.pollInterval", 0);
 
     if (!autorefresh || !interval || interval <= 0) {
       return;
@@ -648,9 +654,40 @@ export class Repository implements IRemoteRepository {
   }
 
   /**
-   * Refresh the incoming (remote) changes in the background. This is wired to
-   * the scheduled interval and to the window focus event so that commits made
-   * by other users become visible without a manual refresh.
+   * Fetch the incoming (remote) changes on demand.
+   *
+   * This bypasses `svn.remoteChanges.checkFrequency` on purpose: the Pull and
+   * Refresh Remote Changes commands must keep working when the automatic
+   * background check is disabled (the default).
+   */
+  public async fetchRemoteChanges() {
+    try {
+      // The remote check is a routine refresh: like the file-system driven
+      // refreshes it does not need ignored entries, and skipping
+      // `--no-ignore` keeps the already expensive `--show-updates` scan from
+      // walking large ignored trees (node_modules, build output, ...).
+      await this.run(Operation.StatusRemote, undefined, true, false);
+    } catch (error) {
+      console.error(error);
+
+      // `svn status --show-updates` is also the refresh used to pick up local
+      // changes. When the server cannot be reached (offline, VPN down,
+      // authentication problem) that command fails as a whole, so fall back to
+      // a local-only status. Otherwise the Source Control view would stay stale
+      // until the window is reloaded.
+      try {
+        await this.status(false, false);
+      } catch (localError) {
+        console.error(localError);
+      }
+    }
+  }
+
+  /**
+   * Automatic background check, wired to the scheduled interval and to window
+   * focus. A frequency of 0 (the default) disables it entirely; remote changes
+   * are then fetched only by explicit commands (Pull / Refresh Remote
+   * Changes), which is what Git users expect and avoids polling a slow server.
    */
   @debounce(1000)
   private async refreshRemoteChanges() {
@@ -660,46 +697,24 @@ export class Repository implements IRemoteRepository {
   private async checkRemoteChanges() {
     const updateFreq = configuration.get<number>(
       "remoteChanges.checkFrequency",
-      300
+      0
     );
 
-    // A positive frequency enables remote change checking; only a falsy value
-    // (e.g. 0) disables the feature and clears the group.
-    if (updateFreq !== 0) {
-      // Avoid piling up remote checks (e.g. rapid window focus changes or a
-      // slow server) and never start one while another `svn` command is
-      // running on the same working copy: concurrent commands can leave the
-      // working copy locked (E155004) and make `svn update` fail.
-      if (!this.operations.isIdle()) {
-        return;
-      }
-
-      try {
-        await this.run(Operation.StatusRemote);
-      } catch (error) {
-        // The operation already reports errors to the user; swallow the
-        // rejection so background refreshes (interval/focus) never become
-        // unhandled promise rejections.
-        console.error(error);
-
-        // `svn status --show-updates` is also the periodic refresh used to
-        // pick up local changes. When the server cannot be reached (offline,
-        // VPN down, authentication problem) that command fails as a whole, so
-        // fall back to a local-only status. Otherwise the Source Control view
-        // would stay stale until the window is reloaded.
-        try {
-          await this.status(false, false);
-        } catch (localError) {
-          console.error(localError);
-        }
-      }
-    } else {
-      // Remove list of remote changes
-      if (this.remoteChanges) {
-        this.remoteChanges.dispose();
-        this.remoteChanges = undefined;
-      }
+    // A positive frequency enables the automatic remote check. Disabling it
+    // must not clear the group: a manual fetch can still fill it.
+    if (updateFreq === 0) {
+      return;
     }
+
+    // Avoid piling up remote checks (e.g. rapid window focus changes or a
+    // slow server) and never start one while another `svn` command is running
+    // on the same working copy: concurrent commands can leave the working copy
+    // locked (E155004) and make `svn update` fail.
+    if (!this.operations.isIdle()) {
+      return;
+    }
+
+    await this.fetchRemoteChanges();
   }
 
   private onFSChange(_uri: Uri): void {
@@ -1673,7 +1688,27 @@ export class Repository implements IRemoteRepository {
         const checkRemote = operation === Operation.StatusRemote;
 
         if (!isReadOnly(operation)) {
-          await this.updateModelState(checkRemote, includeIgnored);
+          try {
+            await this.updateModelState(checkRemote, includeIgnored);
+          } catch (err) {
+            // Refreshing the model is not part of the user's operation. A
+            // background `svn status` (notably `--show-updates` timing out on
+            // a slow server) must not make a successful update or commit look
+            // like it failed. Status operations still propagate because the
+            // refresh *is* their result and callers fall back to a local scan;
+            // a missing working copy must propagate so the repository is closed.
+            const e = err as Error & { svnErrorCode?: string };
+
+            if (
+              operation === Operation.Status ||
+              operation === Operation.StatusRemote ||
+              e.svnErrorCode === svnErrorCodes.NotASvnRepository
+            ) {
+              throw err;
+            }
+
+            console.error(err);
+          }
         }
 
         return result;

@@ -173,12 +173,11 @@ always match the committed revision.
 
 ### 3. Incoming (remote) changes sometimes not visible
 - Commits made by other users were only detected by the periodic poll
-  (`svn.remoteChanges.checkFrequency`, default 300 s), and the **Refresh**
-  command did not check the server by default (`svn.refresh.remoteChanges`
-  defaulted to `false`).
-- Incoming changes are now re-checked when the VS Code window regains focus,
-  and the default of `svn.refresh.remoteChanges` is now `true` so a manual
-  refresh also surfaces remote commits.
+  (`svn.remoteChanges.checkFrequency`). The automatic poll is now off by default
+  (see section 11), so incoming changes are fetched with the **Pull** or
+  **Refresh Remote Changes** command.
+- Incoming changes are also re-checked when the VS Code window regains focus
+  (when automatic checks are enabled).
 - Remote checks no longer run concurrently (guarded via the operation state)
   and background refresh failures no longer produce unhandled rejections.
 
@@ -241,10 +240,10 @@ always match the committed revision.
   opened workspace folder. Without a watcher event nothing re-ran `svn status`,
   so the Source Control view stayed stale until the window was reloaded.
 - The watcher now covers both the working copy root and the opened workspace
-  folder, and a new `svn.refresh.pollInterval` (default 30 s, `0` disables) runs
-  a local `svn status` in the background. This is a safety net for missed
-  events; it does not check the server. See section 10 for the follow-up work
-  that removed the remaining blind spots.
+  folder, and `svn.refresh.pollInterval` can run a local `svn status` in the
+  background (disabled by default; `0` disables). This is an optional safety net
+  for missed events; it does not check the server. See section 10 for the
+  follow-up work that removed the remaining blind spots.
 - The remote check (`svn status --show-updates`) no longer starts while another
   `svn` command is running, and when it fails (offline, VPN down, auth error) a
   local-only status is run instead, so local changes still appear in the view.
@@ -287,6 +286,23 @@ always match the committed revision.
 - The full analysis and the remaining optional improvements (refresh
   diagnostics, deep content verification for mtime-preserving changes, adaptive
   polling) are documented in `doc/change-detection-robustness.md`.
+
+### 11. Remote checks and status polling are opt-in (Git-like)
+- Automatic remote checks (`svn.remoteChanges.checkFrequency`) and the
+  background status poll (`svn.refresh.pollInterval`) are now disabled by
+  default. Local changes are detected from file system events, window focus and
+  the Refresh command, the same way the built-in Git extension works, so the
+  extension no longer runs `svn status` (or `svn status --show-updates`) on a
+  timer.
+- Added `SVN: Pull` to the Source Control view's **More Actions** menu. It runs
+  `svn update` and then refreshes the incoming changes list, giving Git-like
+  pull behavior without periodic server requests. `SVN: Refresh Remote Changes`
+  fetches incoming changes without updating and also works when automatic checks
+  are disabled.
+- A failed background status refresh no longer fails the user operation that
+  triggered it (`Unable to update: svn stat timed out ...`), and the throttle
+  decorator now recovers after a rejected run instead of returning the same
+  rejection to every later call.
 
 ## Changed Behaviors
 

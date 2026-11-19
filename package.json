@@ -331,6 +331,12 @@
         "icon": "$(history)"
       },
       {
+        "command": "svn.pull",
+        "title": "%svn.command.pull.title%",
+        "category": "%svn.category%",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "svn.refresh",
         "title": "%svn.command.refresh.title%",
         "category": "%svn.category%",
@@ -737,6 +743,10 @@
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
         },
         {
+          "command": "svn.pull",
+          "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
+        },
+        {
           "command": "svn.refresh",
           "when": "config.svn.enabled && svnOpenRepositoryCount != 0"
         },
@@ -1019,6 +1029,10 @@
         {
           "submenu": "svn.branch",
           "group": "1_branch",
+          "when": "config.svn.enabled && scmProvider == svn"
+        },
+        {
+          "command": "svn.pull",
           "when": "config.svn.enabled && scmProvider == svn"
         },
         {
@@ -1652,17 +1666,17 @@
         "svn.refresh.pollInterval": {
           "type": "number",
           "description": "%svn.config.refresh.pollInterval.description%",
-          "default": 30
+          "default": 0
         },
         "svn.refresh.remoteChanges": {
           "type": "boolean",
           "description": "%svn.config.refresh.remoteChanges.description%",
-          "default": true
+          "default": false
         },
         "svn.remoteChanges.checkFrequency": {
           "type": "number",
           "description": "%svn.config.remoteChanges.checkFrequency.description%",
-          "default": 300
+          "default": 0
         },
         "svn.showOutput": {
           "type": "boolean",

@@ -66,6 +66,20 @@ along with it. Folders with too many files fall back to a single entry,
 controlled by `svn.sourceControl.expandUnversioned` and
 `svn.sourceControl.unversionedLimit`.
 
+### Pull and On-Demand Remote Changes
+
+Like the built-in Git extension, the Source Control view no longer polls the
+server or scans the whole working copy on a timer by default. Local changes are
+refreshed from file system events (plus window focus and `SVN: Refresh`), and
+incoming changes are fetched on demand:
+
+- `SVN: Pull` in the Source Control view's **More Actions** (`...`) menu runs
+  `svn update` and then refreshes the incoming changes list.
+- `SVN: Refresh Remote Changes` only fetches incoming changes without updating.
+- To restore the old periodic behavior, set
+  `svn.remoteChanges.checkFrequency` (seconds) and/or
+  `svn.refresh.pollInterval`.
+
 ---
 
 ### Checkout
@@ -126,11 +140,12 @@ Here are all of the extension settings with their default values. To change any 
   // Whether auto refreshing is enabled
   "svn.autorefresh": true,
 
-  // Interval in seconds for the background working copy status check used when
-  // file system events are missed (for example changes made by external tools).
-  // It also runs while the window is unfocused. Set to 0 to disable.
+  // Optional interval in seconds for the background working copy status check
+  // used when file system events are missed (for example changes made by
+  // external tools). It also runs while the window is unfocused. 0 (default)
+  // disables it: like Git, local status is driven by file system events.
   // Requires svn.autorefresh
-  "svn.refresh.pollInterval": 30,
+  "svn.refresh.pollInterval": 0,
 
   // Show the "Blame (Annotate)" command in menus and the command palette
   "svn.blame.enabled": true,
@@ -264,11 +279,14 @@ Here are all of the extension settings with their default values. To change any 
   // Only show previous commits for a given user. Requires svn >= 1.8
   "svn.previousCommitsUser": null,
 
-  // Refresh remote changes on refresh command
-  "svn.refresh.remoteChanges": true,
+  // Also refresh remote changes when running the Refresh command. Disabled by
+  // default; use Pull or Refresh Remote Changes to fetch on demand
+  "svn.refresh.remoteChanges": false,
 
-  // Set the interval in seconds to check changed files on remote repository and show in statusbar. 0 to disable
-  "svn.remoteChanges.checkFrequency": 300,
+  // Interval in seconds for automatic remote change checks
+  // (svn status --show-updates). 0 (default) disables automatic checks; use the
+  // Pull or Refresh Remote Changes command to fetch on demand
+  "svn.remoteChanges.checkFrequency": 0,
 
   // Show the output window when the extension starts
   "svn.showOutput": null,
